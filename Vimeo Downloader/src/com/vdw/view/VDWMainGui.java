@@ -1,12 +1,17 @@
 package com.vdw.view;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.*;
 import java.net.*;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.*;
 
 import javax.swing.*;
 
+import org.apache.commons.io.IOUtils;
 import org.json.*;
 
 import com.phill.libs.AlertDialog;
@@ -14,6 +19,7 @@ import com.phill.libs.FileChooserHelper;
 import com.phill.libs.FileFilters;
 import com.phill.libs.GraphicsHelper;
 import com.phill.libs.JPaintedPanel;
+import com.phill.libs.KeyboardAdapter;
 import com.phill.libs.PhillFileUtils;
 import com.phill.libs.ResourceManager;
 
@@ -43,6 +49,9 @@ public class VDWMainGui extends JFrame {
 	private final JLabel textVideoRes, textVideoBitrate, textVideoFPS, textVideoDuration, textVideoSize;
 	private final JLabel textAudioBitrate, textAudioSample, textAudioChannel, textAudioDuration, textAudioSize;
 	private JLabel textOutputSize;
+	private JButton buttonClipboard;
+	private JButton buttonClear;
+	private JButton buttonParse;
 	
 	public static void main(String[] args) {
 		new VDWMainGui();
@@ -82,6 +91,7 @@ public class VDWMainGui extends JFrame {
 		panelJSON.setLayout(null);
 		
 		textJSON = new JTextField();
+		textJSON.setToolTipText("Here goes the 'master.json' URL");
 		textJSON.requestFocus();
 		textJSON.setFont(font);
 		textJSON.setForeground(color);
@@ -89,23 +99,26 @@ public class VDWMainGui extends JFrame {
 		textJSON.setBounds(12, 30, 850, 25);
 		panelJSON.add(textJSON);
 		
-		JButton buttonClipboard = new JButton(pasteIcon);
+		buttonClipboard = new JButton(pasteIcon);
 		buttonClipboard.addActionListener((event) -> actionCopyFromClipboard());
 		buttonClipboard.setToolTipText("Get link from clipboard");
 		buttonClipboard.setBounds(875, 30, 30, 25);
 		panelJSON.add(buttonClipboard);
 		
-		JButton buttonClear = new JButton(clearIcon);
+		buttonClear = new JButton(clearIcon);
 		buttonClear.addActionListener((event) -> actionClear());
 		buttonClear.setToolTipText("Clear");
 		buttonClear.setBounds(915, 30, 30, 25);
 		panelJSON.add(buttonClear);
 		
-		JButton buttonParse = new JButton(parseIcon);
+		buttonParse = new JButton(parseIcon);
 		buttonParse.addActionListener((event) -> actionParse());
 		buttonParse.setToolTipText("Parse");
 		buttonParse.setBounds(955, 30, 30, 25);
 		panelJSON.add(buttonParse);
+		
+		KeyListener listener = (KeyboardAdapter) (event) -> { if (event.getKeyCode() == KeyEvent.VK_ENTER) buttonParse.doClick(); };
+		textJSON.addKeyListener(listener);
 		
 		JPanel panelMedia = new JPanel();
 		panelMedia.setOpaque(false);
@@ -122,6 +135,7 @@ public class VDWMainGui extends JFrame {
 		panelMedia.add(panelVideo);
 		
 		comboVideo = new JComboBox<String>();
+		comboVideo.addItem("<none>");
 		comboVideo.addActionListener((event) -> listenerComboVideo());
 		comboVideo.setFont(font);
 		comboVideo.setForeground(color);
@@ -200,6 +214,13 @@ public class VDWMainGui extends JFrame {
 		progressBar.setBounds(12, 283, 456, 20);
 		panelVideo.add(progressBar);
 		
+		JLabel textProgressVideo = new JLabel("Chunk 5/52 [3.78 MB]");
+		textProgressVideo.setHorizontalAlignment(JLabel.CENTER);
+		textProgressVideo.setFont(font);
+		textProgressVideo.setForeground(color);
+		textProgressVideo.setBounds(12, 260, 456, 20);
+		panelVideo.add(textProgressVideo);
+		
 		JPanel panelAudio = new JPanel();
 		panelAudio.setOpaque(false);
 		panelAudio.setBorder(helper.getTitledBorder("Audio"));
@@ -208,6 +229,7 @@ public class VDWMainGui extends JFrame {
 		panelMedia.add(panelAudio);
 		
 		comboAudio = new JComboBox<String>();
+		comboAudio.addItem("<none>");
 		comboAudio.addActionListener((event) -> listenerComboAudio());
 		comboAudio.setFont(font);
 		comboAudio.setForeground(color);
@@ -286,6 +308,13 @@ public class VDWMainGui extends JFrame {
 		progressBar_1.setBounds(10, 283, 456, 20);
 		panelAudio.add(progressBar_1);
 		
+		JLabel textProgressAudio = new JLabel("Chunk 5/52 [3.78 MB]");
+		textProgressAudio.setHorizontalAlignment(JLabel.CENTER);
+		textProgressAudio.setFont(font);
+		textProgressAudio.setForeground(color);
+		textProgressAudio.setBounds(12, 260, 456, 20);
+		panelAudio.add(textProgressAudio);
+		
 		JPanel panelOutput = new JPanel();
 		panelOutput.setOpaque(false);
 		panelOutput.setBorder(helper.getTitledBorder("Output"));
@@ -347,8 +376,40 @@ public class VDWMainGui extends JFrame {
 
 	private void actionClear() {
 		
+		if (this.json != null) {
+			
+			int option = AlertDialog.dialog("When clearing, the entire screen is reset.\nDo you still need to continue?");
+			
+			if (option != AlertDialog.OK_OPTION)
+				return;
+			
+		}
+		
+		utilLockMasterPanel(false);
+		
+		this.json = null;
+		this.videoList = null;
+		this.audioList = null;
+		
+		this.outputFile = null;
+		textOutputPath.setText(null);
+		
+		resetCombos();
+		
 		textJSON.setText(null);
 		textJSON.requestFocus();
+		
+	}
+	
+	private void resetCombos() {
+		
+		comboVideo.removeAllItems();
+		comboAudio.removeAllItems();
+		
+		final String none = "<none>";
+		
+		comboVideo.addItem(none);
+		comboAudio.addItem(none);
 		
 	}
 	
@@ -357,51 +418,78 @@ public class VDWMainGui extends JFrame {
 		// Getting URL from text field
 		final String website = textJSON.getText().trim();
 		
-		try {
-			
-			utilMessage("Downloading 'master.json'...", Color.BLUE, true);
-			
-			// Trying to download and parse the JSON object
-			final URL jsonURL = new URL(website);
-			final JSONObject json = JSONParser.getJSON(jsonURL);
-			
-			// if I have a proper master.json...
-			if (json != null) {
+		// This job needs to be run inside a thread, as soon as it gets connected to the Internet
+		Runnable job = () -> {
+		
+			try {
 				
-				utilMessage("Parsing JSON...", Color.BLUE, true);
+				utilLockMasterPanel(true);
+				utilMessage("Downloading 'master.json'...", Color.BLUE, true);
 				
-				// ...then I save it and...
-				this.json = json;
+				// Trying to download and parse the JSON object
+				final URL jsonURL = new URL(website);
+				final JSONObject json = JSONParser.getJSON(jsonURL);
 				
-				// ...parse its embedded media...
-				this.videoList = JSONParser.getVideoList(json);
-				this.audioList = JSONParser.getAudioList(json);
-				
-				// ...and fill the combos
-				utilFillCombo(this.videoList,this.comboVideo);
-				utilFillCombo(this.audioList,this.comboAudio);
-				
-				utilHideMessage();
+				// if I have a proper master.json...
+				if (json != null) {
+					
+					utilMessage("Parsing JSON...", Color.BLUE, true);
+					
+					// ...then I save it and...
+					this.json = json;
+					
+					// ...parse its embedded media...
+					this.videoList = JSONParser.getVideoList(json);
+					this.audioList = JSONParser.getAudioList(json);
+					
+					// ...and fill the combos
+					utilFillCombo(this.videoList,this.comboVideo);
+					utilFillCombo(this.audioList,this.comboAudio);
+					
+					utilHideMessage();
+					SwingUtilities.invokeLater(() -> buttonClear.setEnabled(true));
+					
+				}
 				
 			}
-			
-		}
-		catch (MalformedURLException exception) {
-			utilMessage("Invalid JSON URL", Color.RED, false);
-		}
-		catch (JSONException exception) {
-			utilMessage(exception.getMessage(), Color.RED, false);
-		}
-		catch (Exception exception) {
-			utilMessage("Unknown error occurred, please check the console", Color.RED, false);
-		}
+			catch (MalformedURLException exception) {
+				utilLockMasterPanel(false);
+				utilMessage("Invalid JSON URL", Color.RED, false);
+			}
+			catch (JSONException exception) {
+				utilLockMasterPanel(false);
+				utilMessage(exception.getMessage(), Color.RED, false);
+			}
+			catch (Exception exception) {
+				utilLockMasterPanel(false);
+				utilMessage("Unknown error occurred, please check the console", Color.RED, false);
+			}
+		
+		};
+		
+		new Thread(job).start();
+		
+	}
+	
+	private void utilLockMasterPanel(final boolean lock) {
+		
+		final boolean visibility = !lock;
+		
+		SwingUtilities.invokeLater(() -> {
+		
+			textJSON       .setEditable(visibility);
+			buttonClipboard.setEnabled (visibility);
+			buttonClear    .setEnabled (visibility);
+			buttonParse    .setEnabled (visibility);
+		
+		});
 		
 	}
 	
 	private void actionDownload() {
 		
 		if (this.json == null) {
-			AlertDialog.erro("Please, inform a valid 'master.json' URL");
+			AlertDialog.erro("You first need to parse a valid 'master.json'");
 			return;
 		}
 		
@@ -414,7 +502,9 @@ public class VDWMainGui extends JFrame {
 			AlertDialog.erro("Select an output file");
 			return;
 		}
-
+		
+		// I must create a dialog here!
+		
 		try {
 			downloader(this.selectedVideo, null, null);
 		} catch (Exception e) {
@@ -434,7 +524,7 @@ public class VDWMainGui extends JFrame {
 		URL videoBaseURL = new URL(tempURL,mediaURL);
 		
 		File output = media.getTempFile();
-		FileOutputStream stream = new FileOutputStream(output,true);
+		BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output,true));
 		
 		byte[] init_segment = media.getInitSegment();
 		stream.write(init_segment);
@@ -451,18 +541,17 @@ public class VDWMainGui extends JFrame {
 	        
 	        if (responseCode == 200) {
 	        	
-	        	System.out.println("Downloading chunk " + i + "/" + segments.length());
+	        	System.out.print("Downloading chunk " + (i+1) + "/" + segments.length() + "...");
 	        	
-	        	InputStream inputStream = httpConn.getInputStream();
+		        InputStream inputStream = httpConn.getInputStream();
 		        
-	            byte[] buffer = new byte[4096];
-	            
-	            while (inputStream.read(buffer) != -1)
-	            	stream.write(buffer);
-	            
+		        IOUtils.copy(inputStream, stream);
+		        
 	            inputStream.close();
 	            stream.flush();
 	            httpConn.disconnect();
+	            
+	            System.out.println("ok");
 	        	
 	        }
 			
@@ -536,11 +625,15 @@ public class VDWMainGui extends JFrame {
 	
 	private void utilFillCombo(ArrayList<? extends Media> mediaList, JComboBox<String> comboBox) {
 		
-		comboBox.removeAllItems();
-		comboBox.addItem("<none>");
+		SwingUtilities.invokeLater(() -> {
 		
-		for (Media media: mediaList)
-			comboBox.addItem(media.getComboInfo());
+			comboBox.removeAllItems();
+			comboBox.addItem("<none>");
+			
+			for (Media media: mediaList)
+				comboBox.addItem(media.getComboInfo());
+		
+		});
 		
 	}
 	
