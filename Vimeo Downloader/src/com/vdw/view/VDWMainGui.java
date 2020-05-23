@@ -5,8 +5,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.*;
 import java.net.*;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.util.*;
 
 import javax.swing.*;
@@ -52,6 +50,12 @@ public class VDWMainGui extends JFrame {
 	private JButton buttonClipboard;
 	private JButton buttonClear;
 	private JButton buttonParse;
+	private JButton buttonFileSelect;
+	private JButton buttonFileClear;
+	private JLabel textProgressVideo;
+	private JProgressBar progressVideo;
+	private JLabel textProgressAudio;
+	private JProgressBar progressAudio;
 	
 	public static void main(String[] args) {
 		new VDWMainGui();
@@ -210,11 +214,13 @@ public class VDWMainGui extends JFrame {
 		textVideoSize.setBounds(115, 150, 329, 20);
 		panelVideoInfo.add(textVideoSize);
 		
-		JProgressBar progressBar = new JProgressBar();
-		progressBar.setBounds(12, 283, 456, 20);
-		panelVideo.add(progressBar);
+		progressVideo = new JProgressBar();
+		progressVideo.setVisible(false);
+		progressVideo.setBounds(12, 283, 456, 20);
+		panelVideo.add(progressVideo);
 		
-		JLabel textProgressVideo = new JLabel("Chunk 5/52 [3.78 MB]");
+		textProgressVideo = new JLabel();
+		textProgressVideo.setVisible(false);
 		textProgressVideo.setHorizontalAlignment(JLabel.CENTER);
 		textProgressVideo.setFont(font);
 		textProgressVideo.setForeground(color);
@@ -304,11 +310,13 @@ public class VDWMainGui extends JFrame {
 		textAudioSize.setBounds(115, 150, 329, 20);
 		panelAudioInfo.add(textAudioSize);
 		
-		JProgressBar progressBar_1 = new JProgressBar();
-		progressBar_1.setBounds(10, 283, 456, 20);
-		panelAudio.add(progressBar_1);
+		progressAudio = new JProgressBar();
+		progressAudio.setVisible(false);
+		progressAudio.setBounds(10, 283, 456, 20);
+		panelAudio.add(progressAudio);
 		
-		JLabel textProgressAudio = new JLabel("Chunk 5/52 [3.78 MB]");
+		textProgressAudio = new JLabel();
+		textProgressAudio.setVisible(false);
 		textProgressAudio.setHorizontalAlignment(JLabel.CENTER);
 		textProgressAudio.setFont(font);
 		textProgressAudio.setForeground(color);
@@ -330,13 +338,13 @@ public class VDWMainGui extends JFrame {
 		textOutputPath.setBounds(12, 30, 890, 25);
 		panelOutput.add(textOutputPath);
 		
-		JButton buttonFileSelect = new JButton(selectIcon);
+		buttonFileSelect = new JButton(selectIcon);
 		buttonFileSelect.addActionListener((event) -> actionFileSelect());
 		buttonFileSelect.setToolTipText("Select file");
 		buttonFileSelect.setBounds(915, 30, 30, 25);
 		panelOutput.add(buttonFileSelect);
 		
-		JButton buttonFileClear = new JButton(clearIcon);
+		buttonFileClear = new JButton(clearIcon);
 		buttonFileClear.addActionListener((event) -> actionFileClear());
 		buttonFileClear.setToolTipText("Clear");
 		buttonFileClear.setBounds(955, 30, 30, 25);
@@ -506,7 +514,23 @@ public class VDWMainGui extends JFrame {
 		// I must create a dialog here!
 		
 		try {
-			downloader(this.selectedVideo, null, null);
+			
+			buttonClear.setEnabled(false);
+			comboVideo.setEnabled(false);
+			comboAudio.setEnabled(false);
+			buttonFileSelect.setEnabled(false);
+			buttonFileClear.setEnabled(false);
+			
+			File a = selectedAudio.getTempFile();
+			File v = selectedVideo.getTempFile();
+			
+			System.out.printf("ffmpeg -i \"%s\" -i \"%s\" -c copy -movflags +faststart -aspect 16:9 \"%s\"",v.getAbsolutePath(),a.getAbsolutePath(),outputFile.getAbsolutePath());
+			
+			/*
+			downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+			downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+			*/
+			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -514,50 +538,91 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	private void downloader(Media media, JProgressBar progress, JLabel label) throws Exception {
+	private void utilUpdateProgress(JProgressBar progress, JLabel label, int currentChunk, int totalChunk, long bytesLoaded) {
+		
+		String labelText = String.format("Downloading chunk %d/%d [%s]",currentChunk,totalChunk,PhillFileUtils.humanReadableByteCount(bytesLoaded));
+		
+		double percent = 100 * ((double) currentChunk / (double) totalChunk);
+	    int intPercent = (int) (percent + 0.5);
+		
+		SwingUtilities.invokeLater(() -> {
+			
+			label.setText(labelText);
+			progress.setValue(intPercent);
+			
+		});
+		
+	}
+	
+	private void downloader(Media media, JProgressBar progress, JLabel label) {
 
-		String masterURL = this.textJSON.getText().trim();
-		String   baseURL = this.json.getString("base_url");
-		String  mediaURL = media.getBaseURL();
+		progress.setValue(0);
+		progress.setVisible(true);
 		
-		URL tempURL = new URL(new URL(masterURL),baseURL);
-		URL videoBaseURL = new URL(tempURL,mediaURL);
+		label.setVisible(true);
 		
-		File output = media.getTempFile();
-		BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output,true));
-		
-		byte[] init_segment = media.getInitSegment();
-		stream.write(init_segment);
-		
-		JSONArray segments = media.getSegments();
-		
-		for (int i=0; i<segments.length(); i++) {
+		Runnable job = () -> {
 			
-			JSONObject chunk = (JSONObject) segments.get(i);
-			URL chunkURL = new URL(videoBaseURL,chunk.getString("url"));
+			try {
+				
+				String masterURL = this.textJSON.getText().trim();
+				String   baseURL = this.json.getString("base_url");
+				String  mediaURL = media.getBaseURL();
+				
+				URL tempURL = new URL(new URL(masterURL),baseURL);
+				URL videoBaseURL = new URL(tempURL,mediaURL);
+				
+				long bytesDownloaded = 0L;
+				
+				File output = media.getTempFile();
+				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output,true));
+				
+				byte[] init_segment = media.getInitSegment();
+				stream.write(init_segment);
+				
+				bytesDownloaded += init_segment.length;
+				
+				JSONArray segments = media.getSegments();
+				
+				utilUpdateProgress(progress, label, 0, segments.length(), bytesDownloaded);
+				
+				for (int i=0; i<segments.length(); i++) {
+					
+					JSONObject chunk = (JSONObject) segments.get(i);
+					URL chunkURL = new URL(videoBaseURL,chunk.getString("url"));
+					
+					HttpURLConnection httpConn = (HttpURLConnection) chunkURL.openConnection();
+			        int responseCode = httpConn.getResponseCode();
+			        
+			        if (responseCode == 200) {
+			        	
+				        InputStream inputStream = httpConn.getInputStream();
+				        
+				        bytesDownloaded += IOUtils.copy(inputStream, stream);
+				        
+				        utilUpdateProgress(progress, label, (i+1), segments.length(), bytesDownloaded);
+				        
+			            inputStream.close();
+			            stream.flush();
+			            httpConn.disconnect();
+			            
+			        }
+			        
+				}
+				
+				stream.close();
+				
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 			
-			HttpURLConnection httpConn = (HttpURLConnection) chunkURL.openConnection();
-	        int responseCode = httpConn.getResponseCode();
-	        
-	        if (responseCode == 200) {
-	        	
-	        	System.out.print("Downloading chunk " + (i+1) + "/" + segments.length() + "...");
-	        	
-		        InputStream inputStream = httpConn.getInputStream();
-		        
-		        IOUtils.copy(inputStream, stream);
-		        
-	            inputStream.close();
-	            stream.flush();
-	            httpConn.disconnect();
-	            
-	            System.out.println("ok");
-	        	
-	        }
 			
-		}
+		};
 		
-		stream.close();
+		Thread thread = new Thread(job);
+		thread.setName("Video downloader thread");
+		thread.start();
 		
 	}
 	
