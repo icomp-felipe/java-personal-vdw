@@ -19,6 +19,10 @@ public abstract class Media {
 		this.mediaType = mediaType;
 	}
 
+	public String getMediaType() {
+		return this.mediaType;
+	}
+	
 	public long getDuration() {
 		return this.mediaJSON.getLong("duration");
 	}

@@ -513,7 +513,6 @@ public class VDWMainGui extends JFrame {
 		
 		// I must create a dialog here!
 		
-		try {
 			
 			buttonClear.setEnabled(false);
 			comboVideo.setEnabled(false);
@@ -521,20 +520,54 @@ public class VDWMainGui extends JFrame {
 			buttonFileSelect.setEnabled(false);
 			buttonFileClear.setEnabled(false);
 			
+			Thread downloader = new Thread(() -> prepare());
+			downloader.setName("Downloader thread");
+			downloader.start();
+			
+			
+	}
+	
+	private void prepare() {
+		
+		try {
+			
+			Thread audio = downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+			Thread video = downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+			
+			video.start();
+			audio.start();
+			
+			video.join();
+			audio.join();
+			
+		}
+		catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		finally {
+			
 			File a = selectedAudio.getTempFile();
 			File v = selectedVideo.getTempFile();
 			
-			System.out.printf("ffmpeg -i \"%s\" -i \"%s\" -c copy -movflags +faststart -aspect 16:9 \"%s\"",v.getAbsolutePath(),a.getAbsolutePath(),outputFile.getAbsolutePath());
+			String[] cmd = {"ffmpeg","-i",v.getAbsolutePath(), "-i",a.getAbsolutePath(),"-c","copy","-movflags","+faststart","-y",outputFile.getAbsolutePath()};
 			
-			/*
-			downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
-			downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
-			*/
+			System.out.println(Arrays.toString(cmd));
 			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			try {
+				int i = Runtime.getRuntime().exec(cmd).waitFor();
+				if (i == 0)
+					System.out.println("done");
+				else
+					System.out.println("fail");
+				
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			
 		}
+		
 		
 	}
 	
@@ -554,8 +587,11 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	private void downloader(Media media, JProgressBar progress, JLabel label) {
+	private Thread downloader(Media media, JProgressBar progress, JLabel label) {
 
+		if (media == null)
+			return new Thread();
+		
 		progress.setValue(0);
 		progress.setVisible(true);
 		
@@ -575,7 +611,7 @@ public class VDWMainGui extends JFrame {
 				long bytesDownloaded = 0L;
 				
 				File output = media.getTempFile();
-				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output,true));
+				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output));
 				
 				byte[] init_segment = media.getInitSegment();
 				stream.write(init_segment);
@@ -607,13 +643,27 @@ public class VDWMainGui extends JFrame {
 			            httpConn.disconnect();
 			            
 			        }
+			        // ELSE ??
 			        
 				}
 				
 				stream.close();
 				
+				final String finish = String.format("Downloaded %d chunks [%s]",segments.length(),PhillFileUtils.humanReadableByteCount(bytesDownloaded));
+				
+				SwingUtilities.invokeLater(() -> {
+					label.setForeground(Color.GREEN);
+					label.setText(finish);
+				});
+				
 			}
 			catch (Exception e) {
+				
+				SwingUtilities.invokeLater(() -> {
+					label.setForeground(Color.RED);
+					label.setText("Something went wrong");
+				});
+				
 				e.printStackTrace();
 			}
 			
@@ -621,9 +671,9 @@ public class VDWMainGui extends JFrame {
 		};
 		
 		Thread thread = new Thread(job);
-		thread.setName("Video downloader thread");
-		thread.start();
-		
+		thread.setName(media.getMediaType() + " downloader thread");
+
+		return thread;
 	}
 	
 	private void listenerComboVideo() {
