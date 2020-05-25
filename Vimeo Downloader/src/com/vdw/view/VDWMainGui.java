@@ -66,6 +66,10 @@ public class VDWMainGui extends JFrame {
 	private Audio selectedAudio;
 	
 	private File outputFile;
+	private JButton btnInterrupt;
+	
+	
+	private Thread cu;
 
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
@@ -371,7 +375,7 @@ public class VDWMainGui extends JFrame {
 		
 		textLog = new JLabel();
 		textLog.setFont(font);
-		textLog.setBounds(12, 565, 912, 25);
+		textLog.setBounds(12, 565, 426, 25);
 		mainFrame.add(textLog);
 		
 		JButton buttonExit = new JButton(exitIcon);
@@ -385,6 +389,11 @@ public class VDWMainGui extends JFrame {
 		buttonDownload.setToolTipText("Download media");
 		buttonDownload.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonDownload);
+		
+		btnInterrupt = new JButton("Interrupt");
+		btnInterrupt.addActionListener((e) -> cu.interrupt());
+		btnInterrupt.setBounds(561, 565, 117, 25);
+		mainFrame.add(btnInterrupt);
 		
 		utilResetCombos();
 		
@@ -463,13 +472,55 @@ public class VDWMainGui extends JFrame {
 	
 	/************************ Button Event Methods Section ********************************/
 	
+	/** Checks pre-requisites and, if everything's fine, procceed with the download of selected media. */
+	private void actionDownload() {
+		
+		/*********** Checking pre-requisites ************/
+		if (this.json == null) {
+			AlertDialog.erro("You first need to parse a valid 'master.json' file");
+			return;
+		}
+		
+		if ((this.selectedVideo == null) && (this.selectedAudio == null)) {
+			AlertDialog.erro("Please, select at least one media stream");
+			return;
+		}
+		
+		if (this.outputFile == null) {
+			AlertDialog.erro("Please, select an output file");
+			return;
+		}
+		
+		/********* Showing a confirm dialog *************/
+		String videoInfo = (this.selectedVideo != null) ? this.selectedVideo.getDialogInfo() : "none";
+		String audioInfo = (this.selectedAudio != null) ? this.selectedAudio.getDialogInfo() : "none";
+		String overwrite = (this.outputFile.exists()) ? "(overwrite)" : "";
+		
+		String message = ResourceManager.getText(this,"download-confirm.msg",videoInfo,audioInfo,this.outputFile.getAbsolutePath(),overwrite);
+		int choice = AlertDialog.dialog(message);
+		
+		if (choice != AlertDialog.OK_OPTION)
+			return;
+
+		// Locking some fields to prevent the user to change values while downloading
+		utilLockDownloading(true);
+		
+		// Doing the hard work...
+		Thread downloader = new Thread(() -> threadDownloader());
+		downloader.setName("Downloader thread");
+		downloader.start();
+		
+		cu = downloader;
+			
+	}
+	
 	/** Resets the entire screen and its internal references. */
 	private void actionJSONClear() {
 		
 		// If a JSON was previously downloaded, a clear dialog is shown
 		if (this.json != null) {
 			
-			String message = ResourceManager.getText(this,"json-clear-confirm.txt",0);
+			String message = ResourceManager.getText(this,"json-clear-confirm.msg",0);
 			int choice     = AlertDialog.dialog(message);
 			
 			// Breaks here when EXIT or CANCEL is selected
@@ -538,15 +589,15 @@ public class VDWMainGui extends JFrame {
 			}
 			catch (MalformedURLException exception) {
 				utilLockMasterPanel(false);
-				utilMessage("Invalid JSON URL", rd_dk, false);
+				utilMessage("Invalid JSON URL", rd_dk, false, 5);
 			}
 			catch (JSONException exception) {
 				utilLockMasterPanel(false);
-				utilMessage(exception.getMessage(), rd_dk, false);
+				utilMessage(exception.getMessage(), rd_dk, false, 5);
 			}
 			catch (Exception exception) {
 				utilLockMasterPanel(false);
-				utilMessage("Unknown error occurred, please check the console", rd_dk, false);
+				utilMessage("Unknown error occurred, please check the console", rd_dk, false, 10);
 			}
 		
 		};
@@ -570,7 +621,7 @@ public class VDWMainGui extends JFrame {
 			// ... and the file already exists, an overwrite dialog is shown.
 			if (file.exists()) {
 				
-				String message = ResourceManager.getText(this,"output-select-override.txt",0);
+				String message = ResourceManager.getText(this,"output-select-override.msg",0);
 				int choice = JOptionPane.showConfirmDialog(this,message);
 				
 				// If the user doesn't want to overwrite the selected file, the code ends here
@@ -597,6 +648,38 @@ public class VDWMainGui extends JFrame {
 	
 	/************************* Utility Methods Section ************************************/
 
+	/** Builds the merge command using the input and output files and checking their availability.
+	 *  @return A merge command to be passed to <code>Runtime.exec()</code>. */
+	private String[] utilBuildCommand() {
+		
+		final ArrayList<String> commandBuilder = new ArrayList<String>();
+		
+		commandBuilder.add("ffmpeg");
+		commandBuilder.add("-i");
+		
+		if (this.selectedAudio == null) {
+			commandBuilder.add(this.selectedVideo.getTempFile().getAbsolutePath());
+		}
+		
+		else if (this.selectedVideo == null) {
+			commandBuilder.add(this.selectedAudio.getTempFile().getAbsolutePath());
+		}
+		else {
+			commandBuilder.add(this.selectedAudio.getTempFile().getAbsolutePath());
+			commandBuilder.add("-i");
+			commandBuilder.add(this.selectedVideo.getTempFile().getAbsolutePath());
+		}
+		
+		commandBuilder.add("-c");
+		commandBuilder.add("copy");
+		
+		commandBuilder.add("-y");
+		
+		commandBuilder.add(this.outputFile.getAbsolutePath());
+		
+		return commandBuilder.toArray(new String[0]);
+	}
+	
 	/** Calculates the aproximated media size (extracted from the 'master.json' file) and
 	 *  shows it in a human readable format using the output size label (right down the file
 	 *  selection textfield). */
@@ -631,6 +714,35 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	/** Hides the label designed for logging. */
+	private void utilHideMessage() {
+		
+		Runnable job = () -> {
+			textLog.setText(null);
+			textLog.setIcon(null);
+		};
+		
+		SwingUtilities.invokeLater(job);
+	}
+	
+	/** Blocks some fields when media download is in progress. 
+	 *  @param lock - if 'true' then then components are locked. Otherwise, unlocked */
+	private void utilLockDownloading(final boolean lock) {
+		
+		final boolean enable = !lock;
+		
+		SwingUtilities.invokeLater(() -> {
+		
+			buttonJSONClear   .setEnabled(enable);
+			comboVideo        .setEnabled(enable);
+			comboAudio        .setEnabled(enable);
+			buttonOutputSelect.setEnabled(enable);
+			buttonOutputClear .setEnabled(enable);
+		
+		});
+		
+	}
+	
 	/** Sets visibility of the first panel components (panelJSON).
 	 *  @param lock - if 'true' then then components are locked. Otherwise, unlocked */
 	private void utilLockMasterPanel(final boolean lock) {
@@ -648,6 +760,51 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	/** Shows a message in the label designed for logging during a certain period of time.
+	 *  @param message - the message to be displayed
+	 *  @param color - the font color of the message
+	 *  @param loading - if 'true' a loading gif is added to the beginning of the label
+	 *  @param seconds - the amount of time to display the given message, before hiding it */
+	private void utilMessage(final String message, final Color color, final boolean loading, int seconds) {
+		
+		// Starts a new thread to prevent the caller to wait for this method to end
+		Runnable job = () -> {
+			
+			utilMessage(message,color,loading);
+			
+			try {
+				Thread.sleep(seconds * 1000);
+			}
+			catch (InterruptedException exception) {
+				
+			}
+			finally {
+				utilHideMessage();
+			}
+			
+		};
+		
+		Thread messageThread = new Thread(job);
+		messageThread.setName("utilMessage() Thread");
+		messageThread.start();
+		
+	}
+	
+	/** Shows a message in the label designed for logging.
+	 *  @param message - the message to be displayed
+	 *  @param color - the font color of the message
+	 *  @param loading - if 'true' a loading gif is added to the beginning of the label */
+	private void utilMessage(final String message, final Color color, final boolean loading) {
+		
+		Runnable job = () -> {
+			textLog.setText(message);
+			textLog.setForeground(color);
+			textLog.setIcon(loading ? this.loading : null);
+		};
+		
+		SwingUtilities.invokeLater(job);
+	}
+	
 	/** Resets the comboboxes */
 	private void utilResetCombos() {
 		
@@ -661,126 +818,18 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-
-	
-	
-	
-	
-	
-
-	
-	private void actionDownload() {
+	/** Updates the given {@link JProgressBar} and {@link JLabel} with media coming from the download progress variables.
+	 *  @param progress - the JProgressBar to be used
+	 *  @param label - the JLabel to be used
+	 *  @param currentChunk - chunk that is being downloaded
+	 *  @param totalChunk - total amount of chunks to be downloaded
+	 *  @param bytesLoaded - amount of bytes downloaded until the calling of this method */
+	private synchronized void utilUpdateProgress(JProgressBar progress, JLabel label, int currentChunk, int totalChunk, long bytesLoaded) {
 		
-		if (this.json == null) {
-			AlertDialog.erro("You first need to parse a valid 'master.json' file");
-			return;
-		}
-		
-		if ((this.selectedVideo == null) && (this.selectedAudio == null)) {
-			AlertDialog.erro("Please, select at least one media stream");
-			return;
-		}
-		
-		if (this.outputFile == null) {
-			AlertDialog.erro("Please, select an output file");
-			return;
-		}
-		
-		if (this.outputFile.exists()) {
-			
-			String message = ResourceManager.getText(this,"output-select-override.txt",0);
-			int choice = JOptionPane.showConfirmDialog(this,message);
-			
-			// If the user doesn't want to overwrite the selected file, the code ends here
-			if (choice != JOptionPane.OK_OPTION)
-				return;
-			
-		}
-		
-		// I must create a dialog here!
-		
-			
-			buttonJSONClear.setEnabled(false);
-			comboVideo.setEnabled(false);
-			comboAudio.setEnabled(false);
-			buttonOutputSelect.setEnabled(false);
-			buttonOutputClear.setEnabled(false);
-			
-			Thread downloader = new Thread(() -> prepare());
-			downloader.setName("Downloader thread");
-			downloader.start();
-			
-			
-	}
-	
-	private void prepare() {
-		
-		utilMessage("Downloading media", blue, true);
-		
-		try {
-			
-			Thread audio = downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
-			Thread video = downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
-			
-			video.start();
-			audio.start();
-			
-			video.join();
-			audio.join();
-			
-		}
-		catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		finally {
-			
-			File a = selectedAudio.getTempFile();
-			File v = selectedVideo.getTempFile();
-			
-			String[] cmd = {"ffmpeg","-i",v.getAbsolutePath(), "-i",a.getAbsolutePath(),"-c:v","copy","-c:a","mp3","-movflags","+faststart","-y",outputFile.getAbsolutePath()};
-
-			utilMessage("Merging files with ffmpeg", blue, true);
-			
-			try {
-				int i = Runtime.getRuntime().exec(cmd).waitFor();
-				
-				if (i == 0) {
-					utilMessage("Everything complete", gr_dk, false);
-					JOptionPane.showMessageDialog(this,"Everything complete");
-				}
-				
-				else
-					utilMessage("Merging process failed", rd_dk, false);
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			finally {
-				
-				SwingUtilities.invokeLater(() -> {
-					
-					buttonJSONClear.setEnabled(true);
-					comboVideo.setEnabled(true);
-					comboAudio.setEnabled(true);
-					buttonOutputSelect.setEnabled(true);
-					buttonOutputClear.setEnabled(true);
-					
-				});
-				
-				utilHideMessage();
-				
-			}
-			
-			
-		}
-		
-		
-	}
-	
-	private void utilUpdateProgress(JProgressBar progress, JLabel label, int currentChunk, int totalChunk, long bytesLoaded) {
-		
+		// Building the formatted string to be displayed in the JLabel
 		String labelText = String.format("Downloading chunk %d/%d [%s]",currentChunk,totalChunk,PhillFileUtils.humanReadableByteCount(bytesLoaded));
 		
+		// Building the value to be set in the JProgressBar
 		double percent = 100 * ((double) currentChunk / (double) totalChunk);
 	    int intPercent = (int) (percent + 0.5);
 		
@@ -793,7 +842,84 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	private Thread downloader(Media media, JProgressBar progress, JLabel label) {
+	
+	
+	
+	
+	/** Deletes the temporary media files */
+	private void functionCleanFiles() {
+		
+		if (this.selectedVideo != null)
+			this.selectedVideo.getTempFile().delete();
+		
+		if (this.selectedAudio != null)
+			this.selectedAudio.getTempFile().delete();
+		
+	}
+	
+	/** Calls the external program 'ffmpeg' to merge the downloaded media into the output file selected.
+	 *  @throws RuntimeException when the call returns non-zero exit code. */
+	private void functionMerger() throws InterruptedException, IOException, RuntimeException {
+		
+		// Updating UI
+		utilMessage("Merging files with ffmpeg", blue, true);
+		
+		// Getting the proper merge command
+		String[] command = utilBuildCommand();
+		
+		// Calling ffmpeg to merge files
+		int exitCode = Runtime.getRuntime().exec(command).waitFor();
+		
+		if (exitCode != 0)
+			throw new RuntimeException("Failed to call ffmpeg with the given parameters");
+		
+	}
+	
+	
+	
+
+	
+	private void threadDownloader() {
+		
+		// Updating UI
+		utilMessage("Downloading media", blue, true);
+		
+		// Knowing this method will be run inside a thread, it needs to handle its own exceptions
+		try {
+			
+			// Preparing and executing the threads for each individual media
+			Thread audio = downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+			Thread video = downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+			
+			video.start();
+			audio.start();
+			
+			video.join();
+			audio.join();
+			
+			// After downloading all selected media, it's merging time!
+			functionMerger();
+			
+			// If everything worked as expected, the fields are unlocked and the downloaded media, deleted
+			functionCleanFiles();
+			
+			utilMessage("Everything complete", gr_dk, false, 5);
+			JOptionPane.showMessageDialog(this,"Everything complete");
+			
+		}
+		
+		// Missing better exception handling
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		finally {
+			utilLockDownloading(false);
+		}
+		
+	}
+	
+	private Thread downloader(Media media, JProgressBar progress, JLabel label) throws Exception {
 
 		if (media == null)
 			return new Thread();
@@ -882,30 +1008,8 @@ public class VDWMainGui extends JFrame {
 		return thread;
 	}
 	
-	private void utilMessage(final String message, final Color color, final boolean loading) {
-		
-		Runnable job = () -> {
-			textLog.setText(message);
-			textLog.setForeground(color);
-			textLog.setIcon(loading ? this.loading : null);
-		};
-		
-		SwingUtilities.invokeLater(job);
-	}
-	
-	private void utilHideMessage() {
-		
-		Runnable job = () -> {
-			textLog.setText(null);
-			textLog.setIcon(null);
-		};
-		
-		SwingUtilities.invokeLater(job);
-	}
-	
 	/** Starts the graphical UI */
 	public static void main(String[] args) {
 		new VDWMainGui();
 	}
-	
 }

@@ -40,5 +40,10 @@ public class Audio extends Media {
 	public String getLabelChannels() {
 		return String.format("%.1f ch", getChannels());
 	}
+
+	@Override
+	public String getDialogInfo() {
+		return String.format("stream %d [%d kb/s @ %.1fch]",index,getBitrate()/1000,getChannels());
+	}
 	
 }

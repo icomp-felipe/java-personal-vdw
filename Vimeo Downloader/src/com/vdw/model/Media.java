@@ -73,6 +73,7 @@ public abstract class Media {
 	}
 	
 	public abstract String getComboInfo();
+	public abstract String getDialogInfo();
 
 	public byte[] getInitSegment() {
 		return Base64.getDecoder().decode(mediaJSON.getString("init_segment"));

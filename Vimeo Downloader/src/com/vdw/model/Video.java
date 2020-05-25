@@ -42,4 +42,9 @@ public class Video extends Media {
 		return String.format("%.2f fps", getFramerate());
 	}
 
+	@Override
+	public String getDialogInfo() {
+		return String.format("stream %d [%dp @ %.2f fps]",index,getHeight(),getFramerate());
+	}
+
 }
