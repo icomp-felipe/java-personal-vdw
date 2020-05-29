@@ -41,9 +41,18 @@ public class JSONParser {
 				InputStream stream = connection.getInputStream();
 				String json = IOUtils.toString(stream,"UTF-8");
 				
+				// Creating JSON
 				jso = new JSONObject(json);
 				
+				// Closing web connection
 				stream.close();
+				
+				// Calculating the media base URL and...
+				String aux = jso.getString("base_url");
+				URL baseURL = new URL(url,aux);
+				
+				// ...inserting into the newly created JSON
+				jso.put("media_base_url", baseURL.toString());
 				
 				break;
 		

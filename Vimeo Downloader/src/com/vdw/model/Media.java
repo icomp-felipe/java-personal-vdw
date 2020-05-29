@@ -1,6 +1,8 @@
 package com.vdw.model;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -85,6 +87,13 @@ public abstract class Media {
 
 	public String getBaseURL() {
 		return mediaJSON.getString("base_url");
+	}
+
+	public URL getBaseURL(JSONObject json) throws MalformedURLException {
+		
+		URL baseURL = new URL(json.getString("media_base_url"));
+		
+		return new URL(baseURL,getBaseURL());
 	}
 	
 }

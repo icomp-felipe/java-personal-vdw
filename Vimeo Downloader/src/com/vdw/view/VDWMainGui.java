@@ -13,7 +13,6 @@ import org.apache.commons.io.*;
 
 import com.vdw.model.*;
 import com.vdw.controller.*;
-
 import com.phill.libs.AlertDialog;
 import com.phill.libs.FileChooserHelper;
 import com.phill.libs.FileFilters;
@@ -66,11 +65,7 @@ public class VDWMainGui extends JFrame {
 	private Audio selectedAudio;
 	
 	private File outputFile;
-	private JButton btnInterrupt;
 	
-	
-	private Thread cu;
-
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
 		super("VDW - build 20200524");
@@ -375,7 +370,7 @@ public class VDWMainGui extends JFrame {
 		
 		textLog = new JLabel();
 		textLog.setFont(font);
-		textLog.setBounds(12, 565, 426, 25);
+		textLog.setBounds(12, 565, 912, 25);
 		mainFrame.add(textLog);
 		
 		JButton buttonExit = new JButton(exitIcon);
@@ -389,11 +384,6 @@ public class VDWMainGui extends JFrame {
 		buttonDownload.setToolTipText("Download media");
 		buttonDownload.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonDownload);
-		
-		btnInterrupt = new JButton("Interrupt");
-		btnInterrupt.addActionListener((e) -> cu.interrupt());
-		btnInterrupt.setBounds(561, 565, 117, 25);
-		mainFrame.add(btnInterrupt);
 		
 		utilResetCombos();
 		
@@ -506,12 +496,10 @@ public class VDWMainGui extends JFrame {
 		utilLockDownloading(true);
 		
 		// Doing the hard work...
-		Thread downloader = new Thread(() -> threadDownloader());
-		downloader.setName("Downloader thread");
+		Thread downloader = new Thread(() -> functionBuildMedia());
+		downloader.setName("Builder thread");
 		downloader.start();
 		
-		cu = downloader;
-			
 	}
 	
 	/** Resets the entire screen and its internal references. */
@@ -842,7 +830,47 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	/***************************** Threaded Methods Section *******************************/
 	
+	private void functionBuildMedia() {
+		
+		// Updating UI
+		utilMessage("Downloading media", blue, true);
+		
+		// Knowing this method will be run inside a thread, it needs to handle its own exceptions
+		try {
+			
+			// Preparing and executing the threads for each individual media
+			Thread audio = functionDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+			Thread video = functionDownloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+			
+			video.start();
+			audio.start();
+			
+			video.join();
+			audio.join();
+			
+			// After downloading all selected media, it's merging time!
+			functionMerger();
+			
+			// If everything worked as expected, the fields are unlocked and the downloaded media, deleted
+			functionCleanFiles();
+			
+			utilMessage("Everything complete", gr_dk, false, 5);
+			JOptionPane.showMessageDialog(this,"Everything complete");
+			
+		}
+		
+		// Missing better exception handling
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		finally {
+			utilLockDownloading(false);
+		}
+		
+	}
 	
 	
 	
@@ -879,108 +907,89 @@ public class VDWMainGui extends JFrame {
 	
 
 	
-	private void threadDownloader() {
-		
-		// Updating UI
-		utilMessage("Downloading media", blue, true);
-		
-		// Knowing this method will be run inside a thread, it needs to handle its own exceptions
-		try {
-			
-			// Preparing and executing the threads for each individual media
-			Thread audio = downloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
-			Thread video = downloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
-			
-			video.start();
-			audio.start();
-			
-			video.join();
-			audio.join();
-			
-			// After downloading all selected media, it's merging time!
-			functionMerger();
-			
-			// If everything worked as expected, the fields are unlocked and the downloaded media, deleted
-			functionCleanFiles();
-			
-			utilMessage("Everything complete", gr_dk, false, 5);
-			JOptionPane.showMessageDialog(this,"Everything complete");
-			
-		}
-		
-		// Missing better exception handling
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		finally {
-			utilLockDownloading(false);
-		}
-		
-	}
 	
-	private Thread downloader(Media media, JProgressBar progress, JLabel label) throws Exception {
+	
+	private Thread functionDownloader(Media media, JProgressBar progress, JLabel label) {
 
+		// If no media is selected, then we end here
 		if (media == null)
 			return new Thread();
 		
-		progress.setValue(0);
-		progress.setVisible(true);
+		// Updating UI
+		SwingUtilities.invokeLater(() -> {
+			
+			progress.setValue(0);
+			progress.setVisible(true);
+			label   .setVisible(true);
+			
+		});
 		
-		label.setVisible(true);
-		
+		// Preparing a new Thread
 		Runnable job = () -> {
 			
 			try {
+			
+				// Retrieving media URL
+				URL mediaURL = media.getBaseURL(this.json);
 				
-				String masterURL = this.textJSONURL.getText().trim();
-				String   baseURL = this.json.getString("base_url");
-				String  mediaURL = media.getBaseURL();
-				
-				URL tempURL = new URL(new URL(masterURL),baseURL);
-				URL videoBaseURL = new URL(tempURL,mediaURL);
-				
-				long bytesDownloaded = 0L;
-				
+				// Creating temporary output file
 				File output = media.getTempFile();
 				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output));
 				
-				byte[] init_segment = media.getInitSegment();
-				stream.write(init_segment);
+				// Initiating downloaded byte counter 
+				long bytesDownloaded = 0L;
 				
+				// Writing first binary data to output file, coming from a base64 string inside JSON
+				byte[] init_segment = media.getInitSegment();
+				
+				stream.write(init_segment);
 				bytesDownloaded += init_segment.length;
 				
+				// Retrieving chunk array from JSON
 				JSONArray segments = media.getSegments();
 				
+				// Updating UI
 				utilUpdateProgress(progress, label, 0, segments.length(), bytesDownloaded);
 				
+				// Downloading chunks
 				for (int i=0; i<segments.length(); i++) {
 					
+					// Retrieving the chunk URL 
 					JSONObject chunk = (JSONObject) segments.get(i);
-					URL chunkURL = new URL(videoBaseURL,chunk.getString("url"));
+					URL chunkURL = new URL(mediaURL,chunk.getString("url"));
 					
-					HttpURLConnection httpConn = (HttpURLConnection) chunkURL.openConnection();
-			        int responseCode = httpConn.getResponseCode();
+					// Connecting to the URL
+					HttpURLConnection connection = (HttpURLConnection) chunkURL.openConnection();
+			        int responseCode = connection.getResponseCode();
 			        
+			        // If succeeded...
 			        if (responseCode == 200) {
 			        	
-				        InputStream inputStream = httpConn.getInputStream();
+			        	// then a download task is created...
+				        InputStream inputStream = connection.getInputStream();
 				        
+				        // ...and the downloaded bytes, incremented
 				        bytesDownloaded += IOUtils.copy(inputStream, stream);
 				        
+				        // Updating UI
 				        utilUpdateProgress(progress, label, (i+1), segments.length(), bytesDownloaded);
 				        
+				        // Cleaning resources
 			            inputStream.close();
-			            stream.flush();
-			            httpConn.disconnect();
+			            connection .disconnect();
 			            
 			        }
-			        // ELSE ??
+			        else {
+			        	System.out.println("The selected media is not available anymore");
+			        	break;
+			        }
 			        
 				}
 				
+				// Closing output
 				stream.close();
 				
+				// Updating UI
 				final String finish = String.format("Downloaded %d chunks [%s]",segments.length(),PhillFileUtils.humanReadableByteCount(bytesDownloaded));
 				
 				SwingUtilities.invokeLater(() -> {
@@ -989,14 +998,10 @@ public class VDWMainGui extends JFrame {
 				});
 				
 			}
-			catch (Exception e) {
+			catch (Exception exception) {
 				
-				SwingUtilities.invokeLater(() -> {
-					label.setForeground(rd_dk);
-					label.setText("Something went wrong");
-				});
+				exception.printStackTrace();
 				
-				e.printStackTrace();
 			}
 			
 			
