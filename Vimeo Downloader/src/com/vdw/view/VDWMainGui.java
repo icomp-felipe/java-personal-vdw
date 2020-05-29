@@ -13,6 +13,8 @@ import org.apache.commons.io.*;
 
 import com.vdw.model.*;
 import com.vdw.controller.*;
+import com.vdw.exception.VDWDownloaderException;
+import com.vdw.exception.VDWMergerException;
 import com.phill.libs.AlertDialog;
 import com.phill.libs.FileChooserHelper;
 import com.phill.libs.FileFilters;
@@ -583,7 +585,12 @@ public class VDWMainGui extends JFrame {
 				utilLockMasterPanel(false);
 				utilMessage(exception.getMessage(), rd_dk, false, 5);
 			}
+			catch (ConnectException exception) {
+				utilLockMasterPanel(false);
+				utilMessage("The server refused my connection", rd_dk, false, 5);
+			}
 			catch (Exception exception) {
+				exception.printStackTrace();
 				utilLockMasterPanel(false);
 				utilMessage("Unknown error occurred, please check the console", rd_dk, false, 10);
 			}
@@ -841,14 +848,19 @@ public class VDWMainGui extends JFrame {
 		try {
 			
 			// Preparing and executing the threads for each individual media
-			Thread audio = functionDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
-			Thread video = functionDownloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+			MediaDownloader audio = new MediaDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+			MediaDownloader video = new MediaDownloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
 			
 			video.start();
 			audio.start();
 			
 			video.join();
 			audio.join();
+			
+			// Workaround from: https://stackoverflow.com/questions/6546193/how-to-catch-an-exception-from-a-thread
+			// Stops execution of this thread if 'audio' or 'video' throws any exception
+			video.hasException();
+			audio.hasException();
 			
 			// After downloading all selected media, it's merging time!
 			functionMerger();
@@ -861,9 +873,17 @@ public class VDWMainGui extends JFrame {
 			
 		}
 		
-		// Missing better exception handling
-		catch (Exception e) {
-			e.printStackTrace();
+		catch (InterruptedException exception) {
+			System.out.println("Thread interrupted");
+		}
+		catch (VDWDownloaderException exception) {
+			setDownloadErrorState();
+			utilMessage(exception.getMessage(), rd_dk, false);
+			exception.printStackTrace();
+		}
+		catch (VDWMergerException exception) {
+			utilMessage(exception.getMessage(), rd_dk, false);
+			exception.printStackTrace();
 		}
 		
 		finally {
@@ -872,10 +892,25 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	private void setDownloadErrorState() {
+		
+		SwingUtilities.invokeLater(() -> {
+			
+			progressVideo.setForeground(rd_dk);
+			progressAudio.setForeground(rd_dk);
+			
+			textProgressVideo.setForeground(rd_dk);
+			textProgressAudio.setForeground(rd_dk);
+			
+		});
+		
+	}
 	
 	
 	/** Deletes the temporary media files */
 	private void functionCleanFiles() {
+		
+		System.out.println("ei, eu tbm fui chamada kk");
 		
 		if (this.selectedVideo != null)
 			this.selectedVideo.getTempFile().delete();
@@ -886,8 +921,8 @@ public class VDWMainGui extends JFrame {
 	}
 	
 	/** Calls the external program 'ffmpeg' to merge the downloaded media into the output file selected.
-	 *  @throws RuntimeException when the call returns non-zero exit code. */
-	private void functionMerger() throws InterruptedException, IOException, RuntimeException {
+	 *  @throws VDWMergerException when the call returns non-zero exit code or something goes wrong with Runtime.exec().waitFor(). */
+	private void functionMerger() throws VDWMergerException {
 		
 		// Updating UI
 		utilMessage("Merging files with ffmpeg", blue, true);
@@ -895,11 +930,19 @@ public class VDWMainGui extends JFrame {
 		// Getting the proper merge command
 		String[] command = utilBuildCommand();
 		
-		// Calling ffmpeg to merge files
-		int exitCode = Runtime.getRuntime().exec(command).waitFor();
+		try {
+			
+			// Calling ffmpeg to merge files
+			int exitCode = Runtime.getRuntime().exec(command).waitFor();
+			
+			if (exitCode != 0)
+				throw new VDWMergerException("Failed to call ffmpeg with the given parameters");
+			
+		}
+		catch (InterruptedException | IOException exception) {
+			throw new VDWMergerException("Something went wrong when calling ffmpeg. Please check the console");
+		}
 		
-		if (exitCode != 0)
-			throw new RuntimeException("Failed to call ffmpeg with the given parameters");
 		
 	}
 	
@@ -909,28 +952,46 @@ public class VDWMainGui extends JFrame {
 	
 	
 	
-	private Thread functionDownloader(Media media, JProgressBar progress, JLabel label) {
-
-		// If no media is selected, then we end here
-		if (media == null)
-			return new Thread();
+	
+	private class MediaDownloader extends Thread {
 		
-		// Updating UI
-		SwingUtilities.invokeLater(() -> {
-			
-			progress.setValue(0);
-			progress.setVisible(true);
-			label   .setVisible(true);
-			
-		});
+		private final Media media;
+		private final JProgressBar progress;
+		private final JLabel label;
+		private Exception exception;
 		
-		// Preparing a new Thread
-		Runnable job = () -> {
+		public MediaDownloader(Media media, JProgressBar progress, JLabel label) {
+			
+			this.media = media;
+			this.progress = progress;
+			this.label = label;
+			
+			setName(media.getMediaType() + " downloader thread");
+		}
+		
+		@Override
+		public void run() {
+			
+			// If no media is selected, then we end here
+			if (media == null)
+				return;
+			
+			// Updating UI
+			SwingUtilities.invokeLater(() -> {
+				
+				progress.setValue(0);
+				progress.setVisible(true);
+				label   .setVisible(true);
+				
+				progress.setForeground(blue);
+				label.setForeground(blue);
+				
+			});
 			
 			try {
-			
+				
 				// Retrieving media URL
-				URL mediaURL = media.getBaseURL(this.json);
+				URL mediaURL = media.getBaseURL(json);
 				
 				// Creating temporary output file
 				File output = media.getTempFile();
@@ -960,6 +1021,9 @@ public class VDWMainGui extends JFrame {
 					
 					// Connecting to the URL
 					HttpURLConnection connection = (HttpURLConnection) chunkURL.openConnection();
+					connection.setConnectTimeout(10000);	// Connection timeout set to 10s
+					connection.setReadTimeout   (30000);	// Download timeout set to 30s
+					
 			        int responseCode = connection.getResponseCode();
 			        
 			        // If succeeded...
@@ -980,8 +1044,8 @@ public class VDWMainGui extends JFrame {
 			            
 			        }
 			        else {
-			        	System.out.println("The selected media is not available anymore");
-			        	break;
+			        	stream.close();
+			        	this.exception = new VDWDownloaderException("The selected media is not available anymore");
 			        }
 			        
 				}
@@ -995,22 +1059,33 @@ public class VDWMainGui extends JFrame {
 				SwingUtilities.invokeLater(() -> {
 					label.setForeground(gr_dk);
 					label.setText(finish);
+					progress.setForeground(gr_dk);
 				});
 				
 			}
+			
+			catch (ConnectException exception) {
+				this.exception = new VDWDownloaderException("The server refused my connection");
+			}
 			catch (Exception exception) {
 				
-				exception.printStackTrace();
+				// Here, any exceptions that may occur are redirected to a custom downloader exception
+				this.exception = exception;
 				
 			}
 			
-			
-		};
+		}
 		
-		Thread thread = new Thread(job);
-		thread.setName(media.getMediaType() + " downloader thread");
-
-		return thread;
+		public void hasException() throws VDWDownloaderException {
+			
+			if (this.exception != null)
+				if (this.exception instanceof VDWDownloaderException)
+					throw (VDWDownloaderException) this.exception;
+				else
+					throw new VDWDownloaderException(this.exception);
+			
+		}
+		
 	}
 	
 	/** Starts the graphical UI */
