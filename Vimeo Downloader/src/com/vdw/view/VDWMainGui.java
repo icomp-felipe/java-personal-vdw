@@ -13,8 +13,8 @@ import org.apache.commons.io.*;
 
 import com.vdw.model.*;
 import com.vdw.controller.*;
-import com.vdw.exception.VDWDownloaderException;
-import com.vdw.exception.VDWMergerException;
+import com.vdw.exception.*;
+
 import com.phill.libs.AlertDialog;
 import com.phill.libs.FileChooserHelper;
 import com.phill.libs.FileFilters;
@@ -396,7 +396,6 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	/**************************************************************************************/
 	/************************** Listener Methods Section **********************************/
 	
 	/** Keeps the UI updated with the current video selection.
@@ -598,7 +597,7 @@ public class VDWMainGui extends JFrame {
 			}
 			catch (ConnectException exception) {
 				utilLockMasterPanel(false);
-				utilMessage("The server refused my connection", rd_dk, false, 5);
+				utilMessage("The server is refusing connections", rd_dk, false, 5);
 			}
 			catch (Exception exception) {
 				exception.printStackTrace();
@@ -1092,7 +1091,7 @@ public class VDWMainGui extends JFrame {
 			
 			// Exception handling section
 			catch (ConnectException exception) {
-				this.exception = new VDWDownloaderException("The server refused my connection");
+				this.exception = new VDWDownloaderException("The server is refusing connections");
 			}
 			catch (FileNotFoundException exception) {
 				this.exception = new VDWDownloaderException("Fail to create temporary file");

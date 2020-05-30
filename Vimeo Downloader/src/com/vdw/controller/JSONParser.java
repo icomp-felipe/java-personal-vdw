@@ -23,6 +23,9 @@ public class JSONParser {
 		JSONObject jso = null;
 		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		
+		connection.setConnectTimeout( 5000);	// Connection timeout set to 5s
+		connection.setReadTimeout   (10000);	// Download timeout set to 10s
+		
 		// Getting the response
 		switch (connection.getResponseCode()) {
 		
