@@ -8,4 +8,16 @@ public class VDWMergerException extends RuntimeException {
 		super(message);
 	}
 
+	public VDWMergerException(String message, Throwable cause) {
+		super(message,cause);
+	}
+	
+	@Override
+	public void printStackTrace() {
+		
+		if (!(getCause() instanceof VDWMergerException))
+			getCause().printStackTrace();
+		
+	}
+
 }

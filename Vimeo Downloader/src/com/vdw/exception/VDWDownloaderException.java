@@ -12,4 +12,16 @@ public class VDWDownloaderException extends RuntimeException {
 		super(cause);
 	}
 
+	public VDWDownloaderException(String message, Throwable cause) {
+		super(message,cause);
+	}
+	
+	@Override
+	public void printStackTrace() {
+		
+		if (!(getCause() instanceof VDWDownloaderException))
+			getCause().printStackTrace();
+		
+	}
+
 }

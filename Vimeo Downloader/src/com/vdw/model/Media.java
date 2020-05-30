@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import com.phill.libs.PhillFileUtils;
 import com.phill.libs.TimeUtils;
+import com.phill.libs.time.DateUtils;
 
 public abstract class Media {
 	
@@ -56,22 +57,22 @@ public abstract class Media {
 		return size;
 	}
 	
-	public File getTempFile() {
+	private File output;
+	
+	public File getTempFile(boolean isNewFile) {
 		
-		File output = null;
-		final String tempDir = System.getProperty("java.io.tmpdir");
-		
-		try {
+		if (isNewFile) {
 			
-			final String filename = String.format("%s/%s.tmp",tempDir,this.mediaType);
-			output = new File(filename);
+			final String tempDir = System.getProperty("java.io.tmpdir");
+			final String curdate = DateUtils.getSystemDate("YYMMdd_HHmmss");
+			
+			final String filename = String.format("%s/%s_%s.tmp",tempDir,this.mediaType,curdate);
+			this.output = new File(filename);
+				
 			
 		}
-		catch (Exception exception) {
-			exception.printStackTrace();
-		}
 		
-		return output;
+		return this.output;
 	}
 	
 	public abstract String getComboInfo();

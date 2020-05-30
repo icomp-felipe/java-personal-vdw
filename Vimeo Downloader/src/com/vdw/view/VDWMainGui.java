@@ -54,8 +54,11 @@ public class VDWMainGui extends JFrame {
 	
 	// Creating custom colors
 	private final Color gr_dk = new Color(0x0D6B12);
+	private final Color gr_lt = new Color(0x84EFA5);
 	private final Color rd_dk = new Color(0xBC1742);
+	private final Color rd_lt = new Color(0xEF8E84);
 	private final Color blue  = new Color(0x1F60CB);
+	private final Color bl_lt = new Color(0x3291A8);
 	
 	// Dynamic attributes
 	private JSONObject json;
@@ -525,6 +528,14 @@ public class VDWMainGui extends JFrame {
 		this.audioList = null;
 		this.outputFile = null;
 		
+		this.progressVideo.setVisible(false);
+		this.progressAudio.setVisible(false);
+		
+		this.textProgressVideo.setVisible(false);
+		this.textProgressAudio.setVisible(false);
+		
+		this.textLog.setVisible(false);
+		
 		textOutputFile.setText(null);
 		
 		utilResetCombos();
@@ -613,7 +624,16 @@ public class VDWMainGui extends JFrame {
 		// If something was selected...
 		if (file != null) {
 			
-			// ... and the file already exists, an overwrite dialog is shown.
+			// ... and the file cannot be written, the code ends here
+			if (!file.getParentFile().canWrite()) {
+				
+				String message = ResourceManager.getText(this,"output-select-read-only.msg",0);
+				AlertDialog.erro(message);
+				return;
+				
+			}
+			
+			// ... and if the file already exists, an overwrite dialog is shown.
 			if (file.exists()) {
 				
 				String message = ResourceManager.getText(this,"output-select-override.msg",0);
@@ -653,16 +673,16 @@ public class VDWMainGui extends JFrame {
 		commandBuilder.add("-i");
 		
 		if (this.selectedAudio == null) {
-			commandBuilder.add(this.selectedVideo.getTempFile().getAbsolutePath());
+			commandBuilder.add(this.selectedVideo.getTempFile(false).getAbsolutePath());
 		}
 		
 		else if (this.selectedVideo == null) {
-			commandBuilder.add(this.selectedAudio.getTempFile().getAbsolutePath());
+			commandBuilder.add(this.selectedAudio.getTempFile(false).getAbsolutePath());
 		}
 		else {
-			commandBuilder.add(this.selectedAudio.getTempFile().getAbsolutePath());
+			commandBuilder.add(this.selectedAudio.getTempFile(false).getAbsolutePath());
 			commandBuilder.add("-i");
-			commandBuilder.add(this.selectedVideo.getTempFile().getAbsolutePath());
+			commandBuilder.add(this.selectedVideo.getTempFile(false).getAbsolutePath());
 		}
 		
 		commandBuilder.add("-c");
@@ -839,6 +859,8 @@ public class VDWMainGui extends JFrame {
 	
 	/***************************** Threaded Methods Section *******************************/
 	
+	/** This method is executed inside a Thread. It downloads, merges files into the selected
+	 *  output media and delete temp files when everything finishes. */
 	private void functionBuildMedia() {
 		
 		// Updating UI
@@ -873,16 +895,21 @@ public class VDWMainGui extends JFrame {
 			
 		}
 		
+		// Exception handling section
 		catch (InterruptedException exception) {
-			System.out.println("Thread interrupted");
+			System.err.println("Thread interrupted");
 		}
 		catch (VDWDownloaderException exception) {
 			setDownloadErrorState();
-			utilMessage(exception.getMessage(), rd_dk, false);
+			utilMessage(exception.getMessage(), rd_dk, false,10);
 			exception.printStackTrace();
 		}
 		catch (VDWMergerException exception) {
-			utilMessage(exception.getMessage(), rd_dk, false);
+			utilMessage(exception.getMessage(), rd_dk, false,10);
+			exception.printStackTrace();
+		}
+		catch (Exception exception) {
+			utilMessage("An unknown error occurred, please check the console", rd_dk, false,10);
 			exception.printStackTrace();
 		}
 		
@@ -892,31 +919,14 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	private void setDownloadErrorState() {
-		
-		SwingUtilities.invokeLater(() -> {
-			
-			progressVideo.setForeground(rd_dk);
-			progressAudio.setForeground(rd_dk);
-			
-			textProgressVideo.setForeground(rd_dk);
-			textProgressAudio.setForeground(rd_dk);
-			
-		});
-		
-	}
-	
-	
 	/** Deletes the temporary media files */
 	private void functionCleanFiles() {
 		
-		System.out.println("ei, eu tbm fui chamada kk");
-		
 		if (this.selectedVideo != null)
-			this.selectedVideo.getTempFile().delete();
+			this.selectedVideo.getTempFile(false).delete();
 		
 		if (this.selectedAudio != null)
-			this.selectedAudio.getTempFile().delete();
+			this.selectedAudio.getTempFile(false).delete();
 		
 	}
 	
@@ -939,34 +949,50 @@ public class VDWMainGui extends JFrame {
 				throw new VDWMergerException("Failed to call ffmpeg with the given parameters");
 			
 		}
-		catch (InterruptedException | IOException exception) {
-			throw new VDWMergerException("Something went wrong when calling ffmpeg. Please check the console");
+		catch (Exception exception) {
+			throw new VDWMergerException("Something went wrong merging files. Please, check the console",exception);
 		}
-		
 		
 	}
 	
+	/** Paints with red the download UI components to indicate an download error state. */
+	private void setDownloadErrorState() {
+		
+		SwingUtilities.invokeLater(() -> {
+			
+			progressVideo.setForeground(rd_lt);
+			progressAudio.setForeground(rd_lt);
+			
+			textProgressVideo.setForeground(rd_dk);
+			textProgressAudio.setForeground(rd_dk);
+			
+		});
+		
+	}
 	
-	
-
-	
-	
-	
-	
+	/** Custom thread implementation to download media files. Here a better exception handling
+	 *  is implemented to most common cases. To get the exception, the method hasException()
+	 *  needs to be called after Thread.join(). */
 	private class MediaDownloader extends Thread {
 		
+		// Local attributes
 		private final Media media;
 		private final JProgressBar progress;
 		private final JLabel label;
-		private Exception exception;
 		
+		// This does the trick
+		private VDWDownloaderException exception;
+		
+		// Setting everything, including a custom name for this thread
 		public MediaDownloader(Media media, JProgressBar progress, JLabel label) {
 			
 			this.media = media;
 			this.progress = progress;
 			this.label = label;
 			
-			setName(media.getMediaType() + " downloader thread");
+			if (media != null)
+				setName(media.getMediaType() + " downloader thread");
+			
 		}
 		
 		@Override
@@ -983,8 +1009,8 @@ public class VDWMainGui extends JFrame {
 				progress.setVisible(true);
 				label   .setVisible(true);
 				
-				progress.setForeground(blue);
-				label.setForeground(blue);
+				progress.setForeground(bl_lt);
+				label   .setForeground(blue);
 				
 			});
 			
@@ -994,7 +1020,7 @@ public class VDWMainGui extends JFrame {
 				URL mediaURL = media.getBaseURL(json);
 				
 				// Creating temporary output file
-				File output = media.getTempFile();
+				File output = media.getTempFile(true);
 				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output));
 				
 				// Initiating downloaded byte counter 
@@ -1059,30 +1085,37 @@ public class VDWMainGui extends JFrame {
 				SwingUtilities.invokeLater(() -> {
 					label.setForeground(gr_dk);
 					label.setText(finish);
-					progress.setForeground(gr_dk);
+					progress.setForeground(gr_lt);
 				});
 				
 			}
 			
+			// Exception handling section
 			catch (ConnectException exception) {
 				this.exception = new VDWDownloaderException("The server refused my connection");
 			}
+			catch (FileNotFoundException exception) {
+				this.exception = new VDWDownloaderException("Fail to create temporary file");
+			}
+			catch (MalformedURLException exception) {
+				this.exception = new VDWDownloaderException("Invalid media chunk detected! Please contact the developer");
+			}
+			catch (IOException exception) {
+				this.exception = new VDWDownloaderException("Fail to write to temporary file");
+			}
 			catch (Exception exception) {
-				
-				// Here, any exceptions that may occur are redirected to a custom downloader exception
-				this.exception = exception;
-				
+				this.exception = new VDWDownloaderException("Unknown error occurred during media download, please check the console",exception);
 			}
 			
 		}
 		
+		/** This method does the magic, if something unexpected happens, this throws an
+		 *  exception from the current running Thread and interrupts the caller's execution.
+		 *  @throws VDWDownloaderException when any Exception occurs inside run() method. */
 		public void hasException() throws VDWDownloaderException {
 			
 			if (this.exception != null)
-				if (this.exception instanceof VDWDownloaderException)
-					throw (VDWDownloaderException) this.exception;
-				else
-					throw new VDWDownloaderException(this.exception);
+				throw this.exception;
 			
 		}
 		
@@ -1092,4 +1125,5 @@ public class VDWMainGui extends JFrame {
 	public static void main(String[] args) {
 		new VDWMainGui();
 	}
+	
 }
