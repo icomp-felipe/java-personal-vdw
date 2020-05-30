@@ -75,7 +75,7 @@ public class VDWMainGui extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
-		super("VDW - build 20200524");
+		super("VDW - build 20200530");
 		
 		// Recovering graphical elements from 'res' directory
 		GraphicsHelper helper = GraphicsHelper.getInstance();
