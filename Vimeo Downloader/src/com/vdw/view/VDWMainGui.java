@@ -26,7 +26,7 @@ import com.phill.libs.ResourceManager;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandresouza@hotmail.com
- *  @version 1.4 - 24/05/2020 */
+ *  @version 1.5 - 30/05/2020 */
 public class VDWMainGui extends JFrame {
 	
 	// Serial
