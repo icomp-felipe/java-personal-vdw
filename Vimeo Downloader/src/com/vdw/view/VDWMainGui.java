@@ -34,9 +34,8 @@ public class VDWMainGui extends JFrame {
 	
 	// Graphical attributes
 	private final JTextField textJSONURL;
-	private final JButton buttonJSONClipboard;
-	private final JButton buttonJSONClear;
-	private final JButton buttonJSONParse;
+	private final JButton buttonJSONClipboard, buttonJSONClear, buttonJSONParse;
+	private final JButton buttonDownload, buttonCancel;
 	
 	private final JPanel panelVideoInfo, panelAudioInfo;
 	private final JComboBox<String> comboVideo, comboAudio;
@@ -59,6 +58,7 @@ public class VDWMainGui extends JFrame {
 	private final Color rd_lt = new Color(0xEF8E84);
 	private final Color blue  = new Color(0x1F60CB);
 	private final Color bl_lt = new Color(0x3291A8);
+	private final Color yl_dk = new Color(0xE9EF84);
 	
 	// Dynamic attributes
 	private JSONObject json;
@@ -70,6 +70,8 @@ public class VDWMainGui extends JFrame {
 	private Audio selectedAudio;
 	
 	private File outputFile;
+	
+	private Thread builderThread;
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
@@ -88,6 +90,7 @@ public class VDWMainGui extends JFrame {
 		
 		Icon exitIcon     = ResourceManager.getResizedIcon("icon/shutdown.png",20,20);
 		Icon downloadIcon = ResourceManager.getResizedIcon("icon/save.png",20,20);
+		Icon cancelIcon   = ResourceManager.getResizedIcon("icon/cancel.png",20,20);
 		
 		// Building UI
 		Dimension dimension = new Dimension(1024,640);
@@ -97,7 +100,7 @@ public class VDWMainGui extends JFrame {
 		setSize(dimension);
 		setResizable(false);
 		setLocationRelativeTo(null);
-		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		mainFrame.setLayout(null);
 		
 		JPanel panelJSON = new JPanel();
@@ -384,11 +387,24 @@ public class VDWMainGui extends JFrame {
 		buttonExit.setBounds(942, 565, 30, 25);
 		mainFrame.add(buttonExit);
 		
-		JButton buttonDownload = new JButton(downloadIcon);
+		buttonDownload = new JButton(downloadIcon);
 		buttonDownload.addActionListener((event) -> actionDownload());
 		buttonDownload.setToolTipText("Download media");
 		buttonDownload.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonDownload);
+		
+		buttonCancel = new JButton(cancelIcon);
+		buttonCancel.setVisible(false);
+		buttonCancel.setToolTipText("Cancel all running operations");
+		buttonCancel.setBounds(982, 565, 30, 25);
+		buttonCancel.addActionListener((event) -> actionCancel());
+		mainFrame.add(buttonCancel);
+		
+		// Redirecting window closing event to a custom dispose() method, to prevent system instability
+		addWindowListener(new WindowAdapter() {
+	        public void windowClosing(WindowEvent event) {
+	            dispose();
+	    }});
 		
 		utilResetCombos();
 		
@@ -408,6 +424,9 @@ public class VDWMainGui extends JFrame {
 		
 		// Setting panel's visibility depending on the selection (selected = show, otherwise, hide)
 		panelVideoInfo.setVisible(videoIndex > 0);
+		
+		progressVideo    .setVisible(false);
+		textProgressVideo.setVisible(false);
 		
 		// If a video is selected, the internal reference and graphical labels are updated
 		if (videoIndex > 0) {
@@ -442,6 +461,9 @@ public class VDWMainGui extends JFrame {
 		// Setting panel's visibility depending on the selection (selected = show, otherwise, hide)
 		panelAudioInfo.setVisible(audioIndex > 0);
 		
+		progressAudio    .setVisible(false);
+		textProgressAudio.setVisible(false);
+		
 		// If an audio is selected, the internal reference and graphical labels are updated
 		if (audioIndex > 0) {
 			
@@ -465,6 +487,19 @@ public class VDWMainGui extends JFrame {
 	}
 	
 	/************************ Button Event Methods Section ********************************/
+	
+	/** Cancels the download operation if the user wants. */
+	private void actionCancel() {
+		
+		String message = ResourceManager.getText(this,"cancel-confirm.msg",0);
+		int choice = AlertDialog.dialog(message);
+		
+		if (choice == AlertDialog.OK_OPTION) {
+			this.builderThread.interrupt();
+			setDownloadCancelState();
+		}
+		
+	}
 	
 	/** Checks pre-requisites and, if everything's fine, procceed with the download of selected media. */
 	private void actionDownload() {
@@ -498,11 +533,12 @@ public class VDWMainGui extends JFrame {
 
 		// Locking some fields to prevent the user to change values while downloading
 		utilLockDownloading(true);
+		utilToggleButtons(true);
 		
 		// Doing the hard work...
-		Thread downloader = new Thread(() -> functionBuildMedia());
-		downloader.setName("Builder thread");
-		downloader.start();
+		this.builderThread = new Thread(() -> functionBuildMedia());
+		this.builderThread.setName("Builder thread");
+		this.builderThread.start();
 		
 	}
 	
@@ -832,6 +868,17 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	/** Toggle visibility of cancel and download buttons (that exist in the same
+	 *   location) depending if a 'downloading' operation is being run. */
+	private void utilToggleButtons(boolean downloading) {
+		
+		SwingUtilities.invokeLater(() -> {
+			buttonDownload.setVisible(!downloading);
+			buttonCancel  .setVisible( downloading);
+		});
+		
+	}
+	
 	/** Updates the given {@link JProgressBar} and {@link JLabel} with media coming from the download progress variables.
 	 *  @param progress - the JProgressBar to be used
 	 *  @param label - the JLabel to be used
@@ -865,12 +912,12 @@ public class VDWMainGui extends JFrame {
 		// Updating UI
 		utilMessage("Downloading media", blue, true);
 		
+		// Preparing and executing the threads for each individual media
+		MediaDownloader audio = new MediaDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
+		MediaDownloader video = new MediaDownloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
+		
 		// Knowing this method will be run inside a thread, it needs to handle its own exceptions
 		try {
-			
-			// Preparing and executing the threads for each individual media
-			MediaDownloader audio = new MediaDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
-			MediaDownloader video = new MediaDownloader(this.selectedVideo, this.progressVideo, this.textProgressVideo);
 			
 			video.start();
 			audio.start();
@@ -896,23 +943,30 @@ public class VDWMainGui extends JFrame {
 		
 		// Exception handling section
 		catch (InterruptedException exception) {
-			System.err.println("Thread interrupted");
+			
+			audio.interrupt();
+			video.interrupt();
+			
+			functionCleanFiles();
+			
+			utilMessage("Media download cancelled", Color.BLACK, false, 10);
 		}
 		catch (VDWDownloaderException exception) {
 			setDownloadErrorState();
-			utilMessage(exception.getMessage(), rd_dk, false,10);
+			utilMessage(exception.getMessage(), rd_dk, false, 10);
 			exception.printStackTrace();
 		}
 		catch (VDWMergerException exception) {
-			utilMessage(exception.getMessage(), rd_dk, false,10);
+			utilMessage(exception.getMessage(), rd_dk, false, 10);
 			exception.printStackTrace();
 		}
 		catch (Exception exception) {
-			utilMessage("An unknown error occurred, please check the console", rd_dk, false,10);
+			utilMessage("An unknown error occurred, please check the console", rd_dk, false, 10);
 			exception.printStackTrace();
 		}
 		
 		finally {
+			utilToggleButtons  (false);
 			utilLockDownloading(false);
 		}
 		
@@ -951,6 +1005,21 @@ public class VDWMainGui extends JFrame {
 		catch (Exception exception) {
 			throw new VDWMergerException("Something went wrong merging files. Please, check the console",exception);
 		}
+		
+	}
+	
+	/** Paints with red the download UI components to indicate that the cancel button was pressed. */
+	private void setDownloadCancelState() {
+		
+		SwingUtilities.invokeLater(() -> {
+			
+			progressVideo.setForeground(yl_dk);
+			progressAudio.setForeground(yl_dk);
+			
+			textProgressVideo.setForeground(Color.BLACK);
+			textProgressAudio.setForeground(Color.BLACK);
+			
+		});
 		
 	}
 	
@@ -1037,11 +1106,18 @@ public class VDWMainGui extends JFrame {
 				// Updating UI
 				utilUpdateProgress(progress, label, 0, segments.length(), bytesDownloaded);
 				
+				// Chunk downloaded counter
+				int chunks = 0;
+				
 				// Downloading chunks
-				for (int i=0; i<segments.length(); i++) {
+				for (; chunks<segments.length(); chunks++) {
+					
+					// If the current thread is interrupted, the 'for' is exited
+					if (isInterrupted())
+						break;
 					
 					// Retrieving the chunk URL 
-					JSONObject chunk = (JSONObject) segments.get(i);
+					JSONObject chunk = (JSONObject) segments.get(chunks);
 					URL chunkURL = new URL(mediaURL,chunk.getString("url"));
 					
 					// Connecting to the URL
@@ -1061,7 +1137,7 @@ public class VDWMainGui extends JFrame {
 				        bytesDownloaded += IOUtils.copy(inputStream, stream);
 				        
 				        // Updating UI
-				        utilUpdateProgress(progress, label, (i+1), segments.length(), bytesDownloaded);
+				        utilUpdateProgress(progress, label, (chunks+1), segments.length(), bytesDownloaded);
 				        
 				        // Cleaning resources
 			            inputStream.close();
@@ -1079,12 +1155,18 @@ public class VDWMainGui extends JFrame {
 				stream.close();
 				
 				// Updating UI
-				final String finish = String.format("Downloaded %d chunks [%s]",segments.length(),PhillFileUtils.humanReadableByteCount(bytesDownloaded));
+				final String finish = String.format("Downloaded %d chunk%s [%s]",chunks,(chunks > 1) ? "s" : "",PhillFileUtils.humanReadableByteCount(bytesDownloaded));
+				final boolean interrupted = isInterrupted();
 				
 				SwingUtilities.invokeLater(() -> {
-					label.setForeground(gr_dk);
+					
 					label.setText(finish);
-					progress.setForeground(gr_lt);
+					
+					if (!interrupted) {
+						label   .setForeground(gr_dk);
+						progress.setForeground(gr_lt);
+					}
+					
 				});
 				
 			}
@@ -1120,9 +1202,27 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	@Override
+	public void dispose() {
+		
+		// If the downloading media thread is being executed...
+		if ((this.builderThread != null) && (this.builderThread.isAlive())) {
+			
+			String message = ResourceManager.getText(this,"exit-confirm.msg",0);
+			int choice = JOptionPane.showConfirmDialog(this,message);
+			
+			// and the user really wants to exit, we cancel the current running thread before
+			if (choice == JOptionPane.OK_OPTION)
+				this.builderThread.interrupt();
+			
+		}
+		
+		super.dispose();
+		
+	}
+	
 	/** Starts the graphical UI */
 	public static void main(String[] args) {
 		new VDWMainGui();
 	}
-	
 }
