@@ -70,14 +70,16 @@ public class VDWMainGui extends JFrame {
 	private Audio selectedAudio;
 	
 	private File outputFile;
+	private File lastSelectedDir = FileChooserHelper.HOME_DIRECTORY;
 	
 	private Thread builderThread;
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
-		super("VDW - build 20200530");
+		super("VDW - build 20200818");
 		
 		// Recovering graphical elements from 'res' directory
+		GraphicsHelper.setFrameIcon(this,"icon/icon.png");
 		GraphicsHelper helper = GraphicsHelper.getInstance();
 		Font   font = helper.getFont ();
 		Color color = helper.getColor();
@@ -143,10 +145,22 @@ public class VDWMainGui extends JFrame {
 		
 		JPanel panelMedia = new JPanel();
 		panelMedia.setOpaque(false);
-		panelMedia.setBorder(helper.getTitledBorder("Media Selection"));
+		panelMedia.setBorder(helper.getTitledBorder("Media Selection                     "));
 		panelMedia.setBounds(12, 95, 1000, 350);
 		mainFrame.add(panelMedia);
 		panelMedia.setLayout(null);
+		
+		JButton buttonMinQuality = new JButton();
+		buttonMinQuality.addActionListener((event) -> actionMinQuality());
+		buttonMinQuality.setToolTipText("Select minimum quality");
+		buttonMinQuality.setBounds(142, 92, 30, 25);
+		mainFrame.add(buttonMinQuality);
+		
+		JButton buttonMaxQuality = new JButton();
+		buttonMaxQuality.addActionListener((event) -> actionMaxQuality());
+		buttonMaxQuality.setToolTipText("Select maximum quality");
+		buttonMaxQuality.setBounds(182, 92, 30, 25);
+		mainFrame.add(buttonMaxQuality);
 		
 		JPanel panelVideo = new JPanel();
 		panelVideo.setOpaque(false);
@@ -650,14 +664,55 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
+	/** Selects video and audio having the maximum quality */
+	private void actionMaxQuality() {
+		
+		if ((audioList != null) && (audioList.size() > 0)) {
+			
+			Audio maxAudio = audioList.stream().max(Comparator.comparing(v -> v.getBitrate())).get();
+			comboAudio.setSelectedItem(maxAudio.getComboInfo());
+			
+		}
+		
+		if ((videoList != null) && (videoList.size() > 0)) {
+			
+			Video maxVideo = videoList.stream().max(Comparator.comparing(v -> v.getWidth())).get();
+			comboVideo.setSelectedItem(maxVideo.getComboInfo());
+			
+		}
+		
+	}
+	
+	/** Selects video and audio having the minimum quality */
+	private void actionMinQuality() {
+		
+		if ((audioList != null) && (audioList.size() > 0)) {
+			
+			Audio minAudio = audioList.stream().min(Comparator.comparing(v -> v.getBitrate())).get();
+			comboAudio.setSelectedItem(minAudio.getComboInfo());
+			
+		}
+		
+		if ((videoList != null) && (videoList.size() > 0)) {
+			
+			Video minVideo = videoList.stream().min(Comparator.comparing(v -> v.getWidth())).get();
+			comboVideo.setSelectedItem(minVideo.getComboInfo());
+			
+		}
+		
+	}
+	
 	/** Shows a selection dialog for the output media file. */
 	private void actionOutputSelect() {
 		
 		// Recovering the selected file
-		final File file = FileChooserHelper.loadFile(this,FileFilters.MP4,"Select an output file",false,FileChooserHelper.HOME_DIRECTORY);
+		final File file = FileChooserHelper.loadFile(this,FileFilters.MP4,"Select an output file",false,lastSelectedDir);
 		
 		// If something was selected...
 		if (file != null) {
+			
+			// ((saving current directory info, to be used as suggestion by the JFileChooser later))
+			this.lastSelectedDir = file.getParentFile();
 			
 			// ... and the file cannot be written, the code ends here
 			if (!file.getParentFile().canWrite()) {
@@ -937,7 +992,7 @@ public class VDWMainGui extends JFrame {
 			functionCleanFiles();
 			
 			utilMessage("Everything complete", gr_dk, false, 5);
-			JOptionPane.showMessageDialog(this,"Everything complete");
+			JOptionPane.showMessageDialog(this,"Everything's complete");
 			
 		}
 		
