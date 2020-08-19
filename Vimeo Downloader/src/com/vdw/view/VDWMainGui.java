@@ -76,7 +76,7 @@ public class VDWMainGui extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
-		super("VDW - build 20200818");
+		super("VDW - build 20200819");
 		
 		// Recovering graphical elements from 'res' directory
 		GraphicsHelper.setFrameIcon(this,"icon/icon.png");
@@ -93,6 +93,9 @@ public class VDWMainGui extends JFrame {
 		Icon exitIcon     = ResourceManager.getResizedIcon("icon/shutdown.png",20,20);
 		Icon downloadIcon = ResourceManager.getResizedIcon("icon/save.png",20,20);
 		Icon cancelIcon   = ResourceManager.getResizedIcon("icon/cancel.png",20,20);
+		
+		Icon minIcon   = ResourceManager.getResizedIcon("icon/round_minus.png",20,20);
+		Icon maxIcon   = ResourceManager.getResizedIcon("icon/round_plus.png",20,20);
 		
 		// Building UI
 		Dimension dimension = new Dimension(1024,640);
@@ -150,13 +153,13 @@ public class VDWMainGui extends JFrame {
 		mainFrame.add(panelMedia);
 		panelMedia.setLayout(null);
 		
-		JButton buttonMinQuality = new JButton();
+		JButton buttonMinQuality = new JButton(minIcon);
 		buttonMinQuality.addActionListener((event) -> actionMinQuality());
 		buttonMinQuality.setToolTipText("Select minimum quality");
 		buttonMinQuality.setBounds(142, 92, 30, 25);
 		mainFrame.add(buttonMinQuality);
 		
-		JButton buttonMaxQuality = new JButton();
+		JButton buttonMaxQuality = new JButton(maxIcon);
 		buttonMaxQuality.addActionListener((event) -> actionMaxQuality());
 		buttonMaxQuality.setToolTipText("Select maximum quality");
 		buttonMaxQuality.setBounds(182, 92, 30, 25);
