@@ -15,7 +15,7 @@ import com.vdw.model.*;
 import com.vdw.controller.*;
 import com.vdw.exception.*;
 
-import com.phill.libs.AlertDialog;
+import com.phill.libs.ui.AlertDialog;
 import com.phill.libs.FileChooserHelper;
 import com.phill.libs.FileFilters;
 import com.phill.libs.GraphicsHelper;
@@ -23,6 +23,7 @@ import com.phill.libs.JPaintedPanel;
 import com.phill.libs.KeyboardAdapter;
 import com.phill.libs.PhillFileUtils;
 import com.phill.libs.ResourceManager;
+import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandresouza@hotmail.com
@@ -125,7 +126,7 @@ public class VDWMainGui extends JFrame {
 		panelJSON.add(textJSONURL);
 		
 		buttonJSONClipboard = new JButton(pasteIcon);
-		buttonJSONClipboard.addActionListener((event) -> textJSONURL.setText(AlertDialog.copyFromClipboard()));
+		buttonJSONClipboard.addActionListener((event) -> textJSONURL.setText(ClipboardUtils.copy()));
 		buttonJSONClipboard.setToolTipText("Get link from clipboard");
 		buttonJSONClipboard.setBounds(875, 30, 30, 25);
 		panelJSON.add(buttonJSONClipboard);
@@ -523,17 +524,17 @@ public class VDWMainGui extends JFrame {
 		
 		/*********** Checking pre-requisites ************/
 		if (this.json == null) {
-			AlertDialog.erro("You first need to parse a valid 'master.json' file");
+			AlertDialog.error("You first need to parse a valid 'master.json' file");
 			return;
 		}
 		
 		if ((this.selectedVideo == null) && (this.selectedAudio == null)) {
-			AlertDialog.erro("Please, select at least one media stream");
+			AlertDialog.error("Please, select at least one media stream");
 			return;
 		}
 		
 		if (this.outputFile == null) {
-			AlertDialog.erro("Please, select an output file");
+			AlertDialog.error("Please, select an output file");
 			return;
 		}
 		
@@ -721,7 +722,7 @@ public class VDWMainGui extends JFrame {
 			if (!file.getParentFile().canWrite()) {
 				
 				String message = ResourceManager.getText(this,"output-select-read-only.msg",0);
-				AlertDialog.erro(message);
+				AlertDialog.error(message);
 				return;
 				
 			}

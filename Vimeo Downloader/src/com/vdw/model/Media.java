@@ -7,8 +7,8 @@ import java.net.*;
 import java.util.*;
 
 import com.phill.libs.PhillFileUtils;
-import com.phill.libs.TimeUtils;
 import com.phill.libs.time.DateUtils;
+import com.phill.libs.time.TimeParser;
 
 /** Contains a reference to an media container in the JSON object.
  *  It's also the super class extended by {@link Video} and {@link Audio} objects.
@@ -119,7 +119,7 @@ public abstract class Media {
 	/** Getter for media duration.
 	 *  @return A formatted string containing the media duration. */
 	public String getLabelDuration() {
-		return TimeUtils.getFormattedTime(getDuration());
+		return TimeParser.getHumanReadableTime(getDuration());
 	}
 	
 	/** Getter for media size.
