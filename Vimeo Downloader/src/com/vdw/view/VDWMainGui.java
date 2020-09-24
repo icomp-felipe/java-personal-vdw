@@ -3,6 +3,7 @@ package com.vdw.view;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import java.io.*;
 import java.net.*;
@@ -16,13 +17,11 @@ import com.vdw.controller.*;
 import com.vdw.exception.*;
 
 import com.phill.libs.ui.AlertDialog;
-import com.phill.libs.FileChooserHelper;
-import com.phill.libs.FileFilters;
-import com.phill.libs.GraphicsHelper;
-import com.phill.libs.JPaintedPanel;
-import com.phill.libs.KeyboardAdapter;
-import com.phill.libs.PhillFileUtils;
+import com.phill.libs.ui.GraphicsHelper;
+import com.phill.libs.ui.JPaintedPanel;
+import com.phill.libs.ui.KeyReleasedListener;
 import com.phill.libs.ResourceManager;
+import com.phill.libs.files.PhillFileUtils;
 import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
@@ -52,6 +51,9 @@ public class VDWMainGui extends JFrame {
 	private final ImageIcon loading = new ImageIcon(ResourceManager.getResource("icon/loading.gif"));
 	private final JLabel textLog;
 	
+	// MP4 file filter (to be used inside JFileChooser)
+	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)","mp4");
+	
 	// Creating custom colors
 	private final Color gr_dk = new Color(0x0D6B12);
 	private final Color gr_lt = new Color(0x84EFA5);
@@ -71,7 +73,7 @@ public class VDWMainGui extends JFrame {
 	private Audio selectedAudio;
 	
 	private File outputFile;
-	private File lastSelectedDir = FileChooserHelper.HOME_DIRECTORY;
+	private File lastSelectedDir;
 	
 	private Thread builderThread;
 	
@@ -85,18 +87,18 @@ public class VDWMainGui extends JFrame {
 		Font   font = helper.getFont ();
 		Color color = helper.getColor();
 		
-		Icon pasteIcon = ResourceManager.getResizedIcon("icon/clipboard_past.png",20,20);
-		Icon clearIcon = ResourceManager.getResizedIcon("icon/clear.png",20,20);
-		Icon parseIcon = ResourceManager.getResizedIcon("icon/cog.png",20,20);
+		Icon pasteIcon = ResourceManager.getIcon("icon/clipboard_past.png",20,20);
+		Icon clearIcon = ResourceManager.getIcon("icon/clear.png",20,20);
+		Icon parseIcon = ResourceManager.getIcon("icon/cog.png",20,20);
 		
-		Icon selectIcon = ResourceManager.getResizedIcon("icon/zoom.png",20,20);
+		Icon selectIcon = ResourceManager.getIcon("icon/zoom.png",20,20);
 		
-		Icon exitIcon     = ResourceManager.getResizedIcon("icon/shutdown.png",20,20);
-		Icon downloadIcon = ResourceManager.getResizedIcon("icon/save.png",20,20);
-		Icon cancelIcon   = ResourceManager.getResizedIcon("icon/cancel.png",20,20);
+		Icon exitIcon     = ResourceManager.getIcon("icon/shutdown.png",20,20);
+		Icon downloadIcon = ResourceManager.getIcon("icon/save.png",20,20);
+		Icon cancelIcon   = ResourceManager.getIcon("icon/cancel.png",20,20);
 		
-		Icon minIcon   = ResourceManager.getResizedIcon("icon/round_minus.png",20,20);
-		Icon maxIcon   = ResourceManager.getResizedIcon("icon/round_plus.png",20,20);
+		Icon minIcon   = ResourceManager.getIcon("icon/round_minus.png",20,20);
+		Icon maxIcon   = ResourceManager.getIcon("icon/round_plus.png",20,20);
 		
 		// Building UI
 		Dimension dimension = new Dimension(1024,640);
@@ -144,7 +146,7 @@ public class VDWMainGui extends JFrame {
 		panelJSON.add(buttonJSONParse);
 		
 		// Adds 'Enter' event to the input URL textfield
-		KeyListener listener = (KeyboardAdapter) (event) -> { if (event.getKeyCode() == KeyEvent.VK_ENTER) buttonJSONParse.doClick(); };
+		KeyListener listener = (KeyReleasedListener) (event) -> { if (event.getKeyCode() == KeyEvent.VK_ENTER) buttonJSONParse.doClick(); };
 		textJSONURL.addKeyListener(listener);
 		
 		JPanel panelMedia = new JPanel();
@@ -710,7 +712,7 @@ public class VDWMainGui extends JFrame {
 	private void actionOutputSelect() {
 		
 		// Recovering the selected file
-		final File file = FileChooserHelper.loadFile(this,FileFilters.MP4,"Select an output file",false,lastSelectedDir);
+		final File file = PhillFileUtils.loadFile("Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir);
 		
 		// If something was selected...
 		if (file != null) {
