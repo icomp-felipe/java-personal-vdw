@@ -13,6 +13,12 @@ import org.json.*;
 import org.apache.commons.io.*;
 
 import com.vdw.model.*;
+
+import net.bramp.ffmpeg.FFmpeg;
+import net.bramp.ffmpeg.FFmpegExecutor;
+import net.bramp.ffmpeg.builder.FFmpegBuilder;
+import net.bramp.ffmpeg.job.FFmpegJob;
+
 import com.vdw.controller.*;
 import com.vdw.exception.*;
 
@@ -761,34 +767,29 @@ public class VDWMainGui extends JFrame {
 
 	/** Builds the merge command using the input and output files and checking their availability.
 	 *  @return A merge command to be passed to <code>Runtime.exec()</code>. */
-	private String[] utilBuildCommand() {
+	private FFmpegBuilder utilBuildCommand() {
 		
-		final ArrayList<String> commandBuilder = new ArrayList<String>();
-		
-		commandBuilder.add("ffmpeg");
-		commandBuilder.add("-i");
+		FFmpegBuilder builder = new FFmpegBuilder();
+
+		// ffmpeg -i <audio.tmp> -i <video.tmp> -c:a copy -c:v copy <output.mp4> -y
 		
 		if (this.selectedAudio == null) {
-			commandBuilder.add(this.selectedVideo.getTempFile(false).getAbsolutePath());
+			builder.addInput(this.selectedVideo.getTempFile(false).getAbsolutePath());
 		}
 		
 		else if (this.selectedVideo == null) {
-			commandBuilder.add(this.selectedAudio.getTempFile(false).getAbsolutePath());
+			builder.addInput(this.selectedAudio.getTempFile(false).getAbsolutePath());
 		}
+		
 		else {
-			commandBuilder.add(this.selectedAudio.getTempFile(false).getAbsolutePath());
-			commandBuilder.add("-i");
-			commandBuilder.add(this.selectedVideo.getTempFile(false).getAbsolutePath());
+			builder.addInput(this.selectedAudio.getTempFile(false).getAbsolutePath());
+			builder.addInput(this.selectedVideo.getTempFile(false).getAbsolutePath());
 		}
 		
-		commandBuilder.add("-c");
-		commandBuilder.add("copy");
+		builder = builder.addOutput(this.outputFile.getAbsolutePath()).setAudioCodec("copy").setVideoCodec("copy").done();
 		
-		commandBuilder.add("-y");
 		
-		commandBuilder.add(this.outputFile.getAbsolutePath());
-		
-		return commandBuilder.toArray(new String[0]);
+		return builder;
 	}
 	
 	/** Calculates the aproximated media size (extracted from the 'master.json' file) and
@@ -1051,16 +1052,23 @@ public class VDWMainGui extends JFrame {
 		// Updating UI
 		utilMessage("Merging files with ffmpeg", blue, true);
 		
-		// Getting the proper merge command
-		String[] command = utilBuildCommand();
-		
 		try {
 			
-			// Calling ffmpeg to merge files
-			int exitCode = Runtime.getRuntime().exec(command).waitFor();
+			// Locating ffmpeg files
+			FFmpeg ffmpeg = new FFmpeg ();
 			
-			if (exitCode != 0)
-				throw new VDWMergerException("Failed to call ffmpeg with the given parameters");
+			// Creating executor
+	        FFmpegExecutor executor = new FFmpegExecutor(ffmpeg);
+	        
+	        // Creating ffmpeg command line:
+	        // ffmpeg -i <audio.tmp> -i <video.tmp> -c:a copy -c:v copy <output.mp4> -y
+	        FFmpegBuilder builder = utilBuildCommand();
+			
+	        // Creating ffmpeg progress monitor
+	        FFmpegJob job = executor.createJob(builder);
+	        
+	        // Doing the actual hard work - this thread will be locked here until the ffmpeg jog finishes
+	        job.run();
 			
 		}
 		catch (Exception exception) {
