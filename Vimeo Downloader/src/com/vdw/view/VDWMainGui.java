@@ -718,7 +718,7 @@ public class VDWMainGui extends JFrame {
 	private void actionOutputSelect() {
 		
 		// Recovering the selected file
-		final File file = PhillFileUtils.loadFile("Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir);
+		final File file = PhillFileUtils.loadFile("Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
 		
 		// If something was selected...
 		if (file != null) {
