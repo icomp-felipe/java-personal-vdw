@@ -518,7 +518,7 @@ public class VDWMainGui extends JFrame {
 	private void actionCancel() {
 		
 		String message = ResourceManager.getText(this,"cancel-confirm.msg",0);
-		int choice = AlertDialog.dialog(message);
+		int choice = AlertDialog.dialog(this, message);
 		
 		if (choice == AlertDialog.OK_OPTION) {
 			this.builderThread.interrupt();
@@ -532,17 +532,17 @@ public class VDWMainGui extends JFrame {
 		
 		/*********** Checking pre-requisites ************/
 		if (this.json == null) {
-			AlertDialog.error("You first need to parse a valid 'master.json' file");
+			AlertDialog.error(this, "You first need to parse a valid 'master.json' file");
 			return;
 		}
 		
 		if ((this.selectedVideo == null) && (this.selectedAudio == null)) {
-			AlertDialog.error("Please, select at least one media stream");
+			AlertDialog.error(this, "Please, select at least one media stream");
 			return;
 		}
 		
 		if (this.outputFile == null) {
-			AlertDialog.error("Please, select an output file");
+			AlertDialog.error(this, "Please, select an output file");
 			return;
 		}
 		
@@ -552,7 +552,7 @@ public class VDWMainGui extends JFrame {
 		String overwrite = (this.outputFile.exists()) ? "(overwrite)" : "";
 		
 		String message = ResourceManager.getText(this,"download-confirm.msg",videoInfo,audioInfo,this.outputFile.getAbsolutePath(),overwrite);
-		int choice = AlertDialog.dialog(message);
+		int choice = AlertDialog.dialog(this, message);
 		
 		if (choice != AlertDialog.OK_OPTION)
 			return;
@@ -575,7 +575,7 @@ public class VDWMainGui extends JFrame {
 		if (this.json != null) {
 			
 			String message = ResourceManager.getText(this,"json-clear-confirm.msg",0);
-			int choice     = AlertDialog.dialog(message);
+			int choice     = AlertDialog.dialog(this, message);
 			
 			// Breaks here when EXIT or CANCEL is selected
 			if (choice != AlertDialog.OK_OPTION)
@@ -623,7 +623,7 @@ public class VDWMainGui extends JFrame {
 				utilMessage("Downloading 'master.json'...", blue, true);
 				
 				// Trying to download and parse the JSON object
-				final URL jsonURL = new URL(website);
+				final URL jsonURL = new URI(website).toURL();
 				final JSONObject json = JSONParser.getJSON(jsonURL);
 				
 				// if I have a proper master.json...
@@ -718,7 +718,7 @@ public class VDWMainGui extends JFrame {
 	private void actionOutputSelect() {
 		
 		// Recovering the selected file
-		final File file = PhillFileUtils.loadFile("Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
+		final File file = PhillFileUtils.loadFile(this, "Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
 		
 		// If something was selected...
 		if (file != null) {
@@ -730,7 +730,7 @@ public class VDWMainGui extends JFrame {
 			if (!file.getParentFile().canWrite()) {
 				
 				String message = ResourceManager.getText(this,"output-select-read-only.msg",0);
-				AlertDialog.error(message);
+				AlertDialog.error(this, message);
 				return;
 				
 			}
