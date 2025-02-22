@@ -8,7 +8,7 @@ import org.apache.commons.io.*;
 import com.vdw.model.*;
 
 /** Provides useful methods to handle with 'master.json' file.
- *  @author Felipe André - felipeandresouza@hotmail.com
+ *  @author Felipe André - felipeandre.eng@gmail.com
  *  @version 1.0, 21/05/2020 */
 public class JSONParser {
 	

@@ -31,7 +31,7 @@ import com.phill.libs.files.PhillFileUtils;
 import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
- *  @author Felipe André - felipeandresouza@hotmail.com
+ *  @author Felipe André - felipeandre.eng@gmail.com
  *  @version 1.5 - 30/05/2020 */
 public class VDWMainGui extends JFrame {
 	

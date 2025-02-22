@@ -1,7 +1,7 @@
 package com.vdw.exception;
 
 /** Exception class used by the media downloader thread.
- *  @author Felipe André - felipeandresouza@hotmail.com
+ *  @author Felipe André - felipeandre.eng@gmail.com
  *  @version 1.0 - 29/05/2020 */
 public class VDWDownloaderException extends RuntimeException {
 

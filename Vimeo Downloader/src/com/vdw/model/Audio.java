@@ -5,7 +5,7 @@ import org.json.JSONObject;
 /** Contains a reference to an audio container in the JSON object.
  *  Here, the JSON object is the data, all other things are getters
  *  retrieving and formatting information directly from the given {@link JSONObject}.
- *  @author Felipe André - felipeandresouza@hotmail.com
+ *  @author Felipe André - felipeandre.eng@gmail.com
  *  @version 1.5 - 29/05/2020 */
 public class Audio extends Media {
 	
