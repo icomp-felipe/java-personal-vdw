@@ -134,19 +134,19 @@ public class VDWMainGui extends JFrame {
 		panelJSON.add(textJSONURL);
 		
 		buttonJSONClipboard = new JButton(pasteIcon);
-		buttonJSONClipboard.addActionListener((event) -> textJSONURL.setText(ClipboardUtils.copy()));
+		buttonJSONClipboard.addActionListener((_) -> textJSONURL.setText(ClipboardUtils.copy()));
 		buttonJSONClipboard.setToolTipText("Get link from clipboard");
 		buttonJSONClipboard.setBounds(875, 30, 30, 25);
 		panelJSON.add(buttonJSONClipboard);
 		
 		buttonJSONClear = new JButton(clearIcon);
-		buttonJSONClear.addActionListener((event) -> actionJSONClear());
+		buttonJSONClear.addActionListener((_) -> actionJSONClear());
 		buttonJSONClear.setToolTipText("Clear");
 		buttonJSONClear.setBounds(915, 30, 30, 25);
 		panelJSON.add(buttonJSONClear);
 		
 		buttonJSONParse = new JButton(parseIcon);
-		buttonJSONParse.addActionListener((event) -> actionJSONParse());
+		buttonJSONParse.addActionListener((_) -> actionJSONParse());
 		buttonJSONParse.setToolTipText("Parse");
 		buttonJSONParse.setBounds(955, 30, 30, 25);
 		panelJSON.add(buttonJSONParse);
@@ -163,13 +163,13 @@ public class VDWMainGui extends JFrame {
 		panelMedia.setLayout(null);
 		
 		JButton buttonMinQuality = new JButton(minIcon);
-		buttonMinQuality.addActionListener((event) -> actionMinQuality());
+		buttonMinQuality.addActionListener((_) -> actionMinQuality());
 		buttonMinQuality.setToolTipText("Select minimum quality");
 		buttonMinQuality.setBounds(142, 92, 30, 25);
 		mainFrame.add(buttonMinQuality);
 		
 		JButton buttonMaxQuality = new JButton(maxIcon);
-		buttonMaxQuality.addActionListener((event) -> actionMaxQuality());
+		buttonMaxQuality.addActionListener((_) -> actionMaxQuality());
 		buttonMaxQuality.setToolTipText("Select maximum quality");
 		buttonMaxQuality.setBounds(182, 92, 30, 25);
 		mainFrame.add(buttonMaxQuality);
@@ -182,7 +182,7 @@ public class VDWMainGui extends JFrame {
 		panelMedia.add(panelVideo);
 		
 		comboVideo = new JComboBox<String>();
-		comboVideo.addActionListener((event) -> listenerComboVideo());
+		comboVideo.addActionListener((_) -> listenerComboVideo());
 		comboVideo.setFont(font);
 		comboVideo.setForeground(color);
 		comboVideo.setBounds(12, 30, 456, 25);
@@ -277,7 +277,7 @@ public class VDWMainGui extends JFrame {
 		panelMedia.add(panelAudio);
 		
 		comboAudio = new JComboBox<String>();
-		comboAudio.addActionListener((event) -> listenerComboAudio());
+		comboAudio.addActionListener((_) -> listenerComboAudio());
 		comboAudio.setFont(font);
 		comboAudio.setForeground(color);
 		comboAudio.setBounds(12, 30, 456, 25);
@@ -380,13 +380,13 @@ public class VDWMainGui extends JFrame {
 		panelOutput.add(textOutputFile);
 		
 		buttonOutputSelect = new JButton(selectIcon);
-		buttonOutputSelect.addActionListener((event) -> actionOutputSelect());
+		buttonOutputSelect.addActionListener((_) -> actionOutputSelect());
 		buttonOutputSelect.setToolTipText("Select file");
 		buttonOutputSelect.setBounds(915, 30, 30, 25);
 		panelOutput.add(buttonOutputSelect);
 		
 		buttonOutputClear = new JButton(clearIcon);
-		buttonOutputClear.addActionListener((event) -> actionOutputClear());
+		buttonOutputClear.addActionListener((_) -> actionOutputClear());
 		buttonOutputClear.setToolTipText("Clear");
 		buttonOutputClear.setBounds(955, 30, 30, 25);
 		panelOutput.add(buttonOutputClear);
@@ -408,13 +408,13 @@ public class VDWMainGui extends JFrame {
 		mainFrame.add(textLog);
 		
 		JButton buttonExit = new JButton(exitIcon);
-		buttonExit.addActionListener((event) -> dispose());
+		buttonExit.addActionListener((_) -> dispose());
 		buttonExit.setToolTipText("Exit");
 		buttonExit.setBounds(942, 565, 30, 25);
 		mainFrame.add(buttonExit);
 		
 		buttonDownload = new JButton(downloadIcon);
-		buttonDownload.addActionListener((event) -> actionDownload());
+		buttonDownload.addActionListener((_) -> actionDownload());
 		buttonDownload.setToolTipText("Download media");
 		buttonDownload.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonDownload);
@@ -423,7 +423,7 @@ public class VDWMainGui extends JFrame {
 		buttonCancel.setVisible(false);
 		buttonCancel.setToolTipText("Cancel all running operations");
 		buttonCancel.setBounds(982, 565, 30, 25);
-		buttonCancel.addActionListener((event) -> actionCancel());
+		buttonCancel.addActionListener((_) -> actionCancel());
 		mainFrame.add(buttonCancel);
 		
 		// Redirecting window closing event to a custom dispose() method, to prevent system instability
