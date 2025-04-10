@@ -7,6 +7,10 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import java.io.*;
 import java.net.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 
 import org.json.*;
@@ -1187,20 +1191,24 @@ public class VDWMainGui extends JFrame {
 					
 					// Retrieving the chunk URL 
 					JSONObject chunk = (JSONObject) segments.get(chunks);
-					URL chunkURL = new URL(mediaURL,chunk.getString("url"));
+					URI chunkURI = new URI(mediaURL.toString()).resolve(chunk.getString("url"));
+					//URL chunkURL = new URL(mediaURL,chunk.getString("url"));
 					
 					// Connecting to the URL
-					HttpURLConnection connection = (HttpURLConnection) chunkURL.openConnection();
-					connection.setConnectTimeout(10000);	// Connection timeout set to 10s
-					connection.setReadTimeout   (30000);	// Download timeout set to 30s
+					// Setting connection parameters
+					HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();	// Connection timeout set to 10s
+					HttpRequest request = HttpRequest.newBuilder(chunkURI).timeout(Duration.ofSeconds(30)).build();	// Download timeout set to 30s
 					
-			        int responseCode = connection.getResponseCode();
+					// Connecting...
+					HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+					
+			        int responseCode = response.statusCode();
 			        
 			        // If succeeded...
 			        if (responseCode == 200) {
 			        	
 			        	// then a download task is created...
-				        InputStream inputStream = connection.getInputStream();
+				        InputStream inputStream = response.body();
 				        
 				        // ...and the downloaded bytes, incremented
 				        bytesDownloaded += IOUtils.copy(inputStream, stream);
@@ -1210,7 +1218,6 @@ public class VDWMainGui extends JFrame {
 				        
 				        // Cleaning resources
 			            inputStream.close();
-			            connection .disconnect();
 			            
 			        }
 			        else {

@@ -40,12 +40,14 @@ public abstract class Media {
 	
 	/** Getter for the media base URL.
 	 *  @return An {@link URL} containing the media base URL created using the given {@link JSONObject}.
-	 *  @throws MalformedURLException when the URL could not be properly created. */
-	public URL getBaseURL(JSONObject json) throws MalformedURLException {
+	 *  @throws MalformedURLException when the URL could not be properly created. 
+	 * @throws URISyntaxException 
+	 * @throws JSONException */
+	public URL getBaseURL(JSONObject json) throws MalformedURLException, JSONException, URISyntaxException {
 		
-		URL baseURL = new URL(json.getString("media_base_url"));
+		URI baseURL = new URI(json.getString("media_base_url"));
 		
-		return new URL(baseURL,getBaseURL());
+		return baseURL.resolve(getBaseURL()).toURL();
 	}
 	
 	/** Getter for the number of containing chunks.

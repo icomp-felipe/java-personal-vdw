@@ -16,8 +16,9 @@ public class JSONParser {
 	 *  @param url - JSON URL
 	 *  @return The {@link JSONObject} downloaded from URL.
 	 *  @throws JSONException when, for some reason, the valid URL could not be reached or the given link doesn't provide a proper JSON.
-	 *  @throws IOException when the attempt to connect to the URL fails. */
-	public static JSONObject getJSON(final URL url) throws JSONException, IOException {
+	 *  @throws IOException when the attempt to connect to the URL fails. 
+	 * @throws URISyntaxException */
+	public static JSONObject getJSON(final URL url) throws JSONException, IOException, URISyntaxException {
 		
 		// Connecting to the URL
 		JSONObject jso = null;
@@ -52,10 +53,11 @@ public class JSONParser {
 				
 				// Calculating the media base URL and...
 				String aux = jso.getString("base_url");
-				URL baseURL = new URL(url,aux);
+				URI baseURI = new URI(url.toString()).resolve(aux);
+				//URL baseURL = new URL(url,aux);
 				
 				// ...inserting into the newly created JSON
-				jso.put("media_base_url", baseURL.toString());
+				jso.put("media_base_url", baseURI.toString());
 				
 				break;
 		
