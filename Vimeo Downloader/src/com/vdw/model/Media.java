@@ -135,10 +135,6 @@ public abstract class Media {
 	
 	/************************** Abstract Methods Section **********************************/
 	
-	/** Getter used to retrieve information to the UI comboBox.
-	 *  @return A formatted string containing detailed information about the selected media. */
-	public abstract String getComboInfo();
-	
 	/** Getter used to retrieve information to the UI confirm dialog (just before downloading media).
 	 *  @return A formatted string containing detailed information about the selected media. */
 	public abstract String getDialogInfo();

@@ -6,7 +6,7 @@ import org.json.JSONObject;
  *  Here, the JSON object is the data, all other things are getters
  *  retrieving and formatting information directly from the given {@link JSONObject}.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.5 - 29/05/2020 */
+ *  @version 1.6 - 10/APR/2025 */
 public class Audio extends Media {
 	
 	/** Main constructor setting parameters and internally defining media type. */
@@ -57,7 +57,7 @@ public class Audio extends Media {
 	//************************** Override Getters Section *********************************/
 
 	@Override
-	public String getComboInfo() {
+	public String toString() {
 		return String.format("%d: %d kb/s @ %.1fch [%d chunks]", super.index, getBitrate()/1000, getChannels(), getChunkCount());
 	}
 	

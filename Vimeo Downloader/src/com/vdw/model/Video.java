@@ -6,7 +6,7 @@ import org.json.JSONObject;
  *  Here, the JSON object is the data, all other things are getters
  *  retrieving and formatting information directly from the given {@link JSONObject}.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.5 - 29/05/2020 */
+ *  @version 1.6 - 10/APR/2025 */
 public class Video extends Media {
 	
 	/** Main constructor setting parameters and internally defining media type. */
@@ -63,13 +63,13 @@ public class Video extends Media {
 	//************************** Override Getters Section *********************************/
 
 	@Override
+	public String toString() {
+		return String.format("%d: %dp @ %.2f fps [%d chunks]", super.index, getHeight(), getFramerate(), getChunkCount());
+	}
+	
+	@Override
 	public String getDialogInfo() {
 		return String.format("stream %d [%dp @ %.2f fps]", super.index, getHeight(), getFramerate());
 	}
 	
-	@Override
-	public String getComboInfo() {
-		return String.format("%d: %dp @ %.2f fps [%d chunks]", super.index, getHeight(), getFramerate(), getChunkCount());
-	}
-
 }
