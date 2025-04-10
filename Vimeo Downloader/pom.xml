@@ -48,11 +48,6 @@
 	        <artifactId>json</artifactId>
 	        <version>20250107</version>
 	    </dependency>
-	    <dependency>
-  		    <groupId>commons-io</groupId>
-  		    <artifactId>commons-io</artifactId>
-  		    <version>2.18.0</version>
-  	    </dependency>
   	    <dependency>
   		    <groupId>net.bramp.ffmpeg</groupId>
   		    <artifactId>ffmpeg</artifactId>
