@@ -33,6 +33,7 @@ import com.phill.libs.ui.JPaintedPanel;
 import com.phill.libs.ui.KeyReleasedListener;
 import com.phill.libs.ResourceManager;
 import com.phill.libs.files.PhillFileUtils;
+import com.phill.libs.i18n.PropertyBundle;
 import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
@@ -44,12 +45,12 @@ public class VDWMainGui extends JFrame {
 	private static final long serialVersionUID = 9171869475092331567L;
 	
 	// Graphical attributes
-	private final JTextField textJSONURL;
+	private final JTextField textJSONURI;
 	private final JButton buttonJSONClipboard, buttonJSONClear, buttonJSONParse;
 	private final JButton buttonDownload, buttonCancel;
 	
 	private final JPanel panelVideoInfo, panelAudioInfo;
-	private final JComboBox<String> comboVideo, comboAudio;
+	private final JComboBox<Media> comboVideo, comboAudio;
 	private final JLabel textVideoRes, textVideoBitrate, textVideoFPS, textVideoDuration, textVideoSize;
 	private final JLabel textAudioBitrate, textAudioSample, textAudioChannel, textAudioDuration, textAudioSize;
 	private final JLabel textProgressVideo, textProgressAudio;
@@ -64,6 +65,9 @@ public class VDWMainGui extends JFrame {
 	
 	// MP4 file filter (to be used inside JFileChooser)
 	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)", "mp4");
+	
+	// Language bundle
+	private final static PropertyBundle bundle = new PropertyBundle("i18n/vdw", null);
 	
 	// Creating custom colors
 	private final Color gr_dk = new Color(0x0D6B12);
@@ -92,20 +96,22 @@ public class VDWMainGui extends JFrame {
 	public VDWMainGui() {
 		super("VDW - build 20250410");
 		
-		// Recovering graphical elements from 'res' directory
-		GraphicsHelper.setFrameIcon(this,"icon/icon.png");
+		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
-		Font   font = helper.getFont ();
-		Color color = helper.getColor();
+		GraphicsHelper.setFrameIcon(this,"icon/icon.png");
 		ESCDispose.register(this);
 		
+		// Custom UI color and font
+		Font   font = helper.getFont ();
+		Color color = helper.getColor();
+		
+		// Custom icons
 		Icon pasteIcon = ResourceManager.getIcon("icon/clipboard_past.png",20,20);
 		Icon clearIcon = ResourceManager.getIcon("icon/clear.png",20,20);
 		Icon parseIcon = ResourceManager.getIcon("icon/cog.png",20,20);
 		
 		Icon selectIcon = ResourceManager.getIcon("icon/zoom.png",20,20);
 		
-		Icon exitIcon     = ResourceManager.getIcon("icon/shutdown.png",20,20);
 		Icon downloadIcon = ResourceManager.getIcon("icon/save.png",20,20);
 		Icon cancelIcon   = ResourceManager.getIcon("icon/cancel.png",20,20);
 		
@@ -113,73 +119,69 @@ public class VDWMainGui extends JFrame {
 		Icon maxIcon   = ResourceManager.getIcon("icon/round_plus.png",20,20);
 		
 		// Building UI
-		Dimension dimension = new Dimension(1024,640);
-		JPanel mainFrame = new JPaintedPanel("img/background.png",dimension);
+		Dimension dimension = new Dimension(1024, 640);
+		JPanel mainFrame = new JPaintedPanel("img/background.png", dimension);
 		setContentPane(mainFrame);
 		
-		setSize(dimension);
-		setResizable(false);
-		setLocationRelativeTo(null);
-		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-		mainFrame.setLayout(null);
-		
+		// Panel 'Master.JSON URL'
 		JPanel panelJSON = new JPanel();
 		panelJSON.setOpaque(false);
-		panelJSON.setBorder(helper.getTitledBorder("Master.JSON URL"));
+		panelJSON.setBorder(helper.getTitledBorder("Master.JSON URI"));
 		panelJSON.setBounds(12, 12, 1000, 75);
-		mainFrame.add(panelJSON);
 		panelJSON.setLayout(null);
+		mainFrame.add(panelJSON);
 		
-		textJSONURL = new JTextField();
-		textJSONURL.setToolTipText("Here goes the 'master.json' URL");
-		textJSONURL.requestFocus();
-		textJSONURL.setFont(font);
-		textJSONURL.setForeground(color);
-		textJSONURL.setColumns(10);
-		textJSONURL.setBounds(12, 30, 850, 25);
-		panelJSON.add(textJSONURL);
+		textJSONURI = new JTextField();
+		textJSONURI.requestFocus();
+		textJSONURI.setFont(font);
+		textJSONURI.setForeground(color);
+		textJSONURI.setToolTipText(bundle.getString("hint-text-json-uri"));
+		textJSONURI.setBounds(12, 30, 850, 25);
+		panelJSON.add(textJSONURI);
 		
 		buttonJSONClipboard = new JButton(pasteIcon);
-		buttonJSONClipboard.addActionListener((_) -> textJSONURL.setText(ClipboardUtils.copy()));
-		buttonJSONClipboard.setToolTipText("Get link from clipboard");
+		buttonJSONClipboard.addActionListener((_) -> textJSONURI.setText(ClipboardUtils.copy()));
+		buttonJSONClipboard.setToolTipText(bundle.getString("hint-button-json-cpb"));
 		buttonJSONClipboard.setBounds(875, 30, 30, 25);
 		panelJSON.add(buttonJSONClipboard);
 		
 		buttonJSONClear = new JButton(clearIcon);
 		buttonJSONClear.addActionListener((_) -> actionJSONClear());
-		buttonJSONClear.setToolTipText("Clear");
+		buttonJSONClear.setToolTipText(bundle.getString("hint-button-json-clear"));
 		buttonJSONClear.setBounds(915, 30, 30, 25);
 		panelJSON.add(buttonJSONClear);
 		
 		buttonJSONParse = new JButton(parseIcon);
 		buttonJSONParse.addActionListener((_) -> actionJSONParse());
-		buttonJSONParse.setToolTipText("Parse");
+		buttonJSONParse.setToolTipText(bundle.getString("hint-button-json-parse"));
 		buttonJSONParse.setBounds(955, 30, 30, 25);
 		panelJSON.add(buttonJSONParse);
 		
 		// Adds 'Enter' event to the input URL textfield
 		KeyListener listener = (KeyReleasedListener) (event) -> { if (event.getKeyCode() == KeyEvent.VK_ENTER) buttonJSONParse.doClick(); };
-		textJSONURL.addKeyListener(listener);
+		textJSONURI.addKeyListener(listener);
 		
+		// Panel 'Media Selection'
 		JPanel panelMedia = new JPanel();
 		panelMedia.setOpaque(false);
 		panelMedia.setBorder(helper.getTitledBorder("Media Selection                     "));
 		panelMedia.setBounds(12, 95, 1000, 350);
-		mainFrame.add(panelMedia);
 		panelMedia.setLayout(null);
+		mainFrame.add(panelMedia);
 		
 		JButton buttonMinQuality = new JButton(minIcon);
 		buttonMinQuality.addActionListener((_) -> actionMinQuality());
-		buttonMinQuality.setToolTipText("Select minimum quality");
+		buttonMinQuality.setToolTipText(bundle.getString("hint-button-min-quality"));
 		buttonMinQuality.setBounds(142, 92, 30, 25);
 		mainFrame.add(buttonMinQuality);
 		
 		JButton buttonMaxQuality = new JButton(maxIcon);
 		buttonMaxQuality.addActionListener((_) -> actionMaxQuality());
-		buttonMaxQuality.setToolTipText("Select maximum quality");
+		buttonMaxQuality.setToolTipText(bundle.getString("hint-button-max-quality"));
 		buttonMaxQuality.setBounds(182, 92, 30, 25);
 		mainFrame.add(buttonMaxQuality);
 		
+		// Subpanel 'Video'
 		JPanel panelVideo = new JPanel();
 		panelVideo.setOpaque(false);
 		panelVideo.setBorder(helper.getTitledBorder("Video"));
@@ -187,7 +189,7 @@ public class VDWMainGui extends JFrame {
 		panelVideo.setLayout(null);
 		panelMedia.add(panelVideo);
 		
-		comboVideo = new JComboBox<String>();
+		comboVideo = new JComboBox<Media>();
 		comboVideo.addActionListener((_) -> listenerComboVideo());
 		comboVideo.setFont(font);
 		comboVideo.setForeground(color);
@@ -271,10 +273,12 @@ public class VDWMainGui extends JFrame {
 		panelVideo.add(textProgressVideo);
 		
 		progressVideo = new JProgressBar();
+		progressVideo.setStringPainted(true);
 		progressVideo.setVisible(false);
 		progressVideo.setBounds(12, 283, 456, 20);
 		panelVideo.add(progressVideo);
 		
+		// Subpanel 'Audio'
 		JPanel panelAudio = new JPanel();
 		panelAudio.setOpaque(false);
 		panelAudio.setBorder(helper.getTitledBorder("Audio"));
@@ -282,7 +286,7 @@ public class VDWMainGui extends JFrame {
 		panelAudio.setBounds(505, 25, 480, 314);
 		panelMedia.add(panelAudio);
 		
-		comboAudio = new JComboBox<String>();
+		comboAudio = new JComboBox<Media>();
 		comboAudio.addActionListener((_) -> listenerComboAudio());
 		comboAudio.setFont(font);
 		comboAudio.setForeground(color);
@@ -346,7 +350,7 @@ public class VDWMainGui extends JFrame {
 		panelAudioInfo.add(textAudioDuration);
 		
 		JLabel labelAudioSize = new JLabel("Size (aprox):");
-		labelAudioSize.setHorizontalAlignment(SwingConstants.RIGHT);
+		labelAudioSize.setHorizontalAlignment(JLabel.RIGHT);
 		labelAudioSize.setFont(font);
 		labelAudioSize.setBounds(12, 150, 95, 20);
 		panelAudioInfo.add(labelAudioSize);
@@ -366,10 +370,12 @@ public class VDWMainGui extends JFrame {
 		panelAudio.add(textProgressAudio);
 		
 		progressAudio = new JProgressBar();
+		progressAudio.setStringPainted(true);
 		progressAudio.setVisible(false);
 		progressAudio.setBounds(10, 283, 456, 20);
 		panelAudio.add(progressAudio);
 		
+		// Panel 'Output'
 		JPanel panelOutput = new JPanel();
 		panelOutput.setOpaque(false);
 		panelOutput.setBorder(helper.getTitledBorder("Output"));
@@ -381,19 +387,19 @@ public class VDWMainGui extends JFrame {
 		textOutputFile.setEditable(false);
 		textOutputFile.setForeground(color);
 		textOutputFile.setFont(font);
-		textOutputFile.setColumns(10);
+		textOutputFile.setToolTipText(bundle.getString("hint-text-output-file"));
 		textOutputFile.setBounds(12, 30, 890, 25);
 		panelOutput.add(textOutputFile);
 		
 		buttonOutputSelect = new JButton(selectIcon);
 		buttonOutputSelect.addActionListener((_) -> actionOutputSelect());
-		buttonOutputSelect.setToolTipText("Select file");
+		buttonOutputSelect.setToolTipText(bundle.getString("hint-button-output-select"));
 		buttonOutputSelect.setBounds(915, 30, 30, 25);
 		panelOutput.add(buttonOutputSelect);
 		
 		buttonOutputClear = new JButton(clearIcon);
 		buttonOutputClear.addActionListener((_) -> actionOutputClear());
-		buttonOutputClear.setToolTipText("Clear");
+		buttonOutputClear.setToolTipText(bundle.getString("hint-button-output-clear"));
 		buttonOutputClear.setBounds(955, 30, 30, 25);
 		panelOutput.add(buttonOutputClear);
 		
@@ -413,27 +419,26 @@ public class VDWMainGui extends JFrame {
 		textLog.setBounds(12, 565, 912, 25);
 		mainFrame.add(textLog);
 		
-		JButton buttonExit = new JButton(exitIcon);
-		buttonExit.addActionListener((_) -> dispose());
-		buttonExit.setToolTipText("Exit");
-		buttonExit.setBounds(942, 565, 30, 25);
-		mainFrame.add(buttonExit);
-		
 		buttonDownload = new JButton(downloadIcon);
 		buttonDownload.addActionListener((_) -> actionDownload());
-		buttonDownload.setToolTipText("Download media");
+		buttonDownload.setToolTipText(bundle.getString("hint-button-download"));
 		buttonDownload.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonDownload);
 		
 		buttonCancel = new JButton(cancelIcon);
 		buttonCancel.setVisible(false);
-		buttonCancel.setToolTipText("Cancel all running operations");
-		buttonCancel.setBounds(982, 565, 30, 25);
 		buttonCancel.addActionListener((_) -> actionCancel());
+		buttonCancel.setToolTipText(bundle.getString("hint-button-cancel"));
+		buttonCancel.setBounds(982, 565, 30, 25);
 		mainFrame.add(buttonCancel);
 		
 		utilResetCombos();
 		
+		setSize(dimension);
+		setResizable(false);
+		setLocationRelativeTo(null);
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		mainFrame.setLayout(null);
 		setVisible(true);
 		
 	}
@@ -445,19 +450,17 @@ public class VDWMainGui extends JFrame {
 	 *  a proper panel. Also the internal references to this video are updated. */
 	private void listenerComboVideo() {
 		
-		// Recovering the selected video index
-		final int videoIndex = this.comboVideo.getSelectedIndex();
+		// Recovering the selected video
+		this.selectedVideo = (Video) comboVideo.getSelectedItem();
 		
 		// Setting panel's visibility depending on the selection (selected = show, otherwise, hide)
-		panelVideoInfo.setVisible(videoIndex > 0);
+		panelVideoInfo.setVisible(this.selectedVideo != null);
 		
 		progressVideo    .setVisible(false);
 		textProgressVideo.setVisible(false);
 		
 		// If a video is selected, the internal reference and graphical labels are updated
-		if (videoIndex > 0) {
-			
-			this.selectedVideo = this.videoList.get(videoIndex - 1);
+		if (this.selectedVideo != null) {
 			
 			textVideoRes     .setText(this.selectedVideo.getResolution    ());
 			textVideoBitrate .setText(this.selectedVideo.getLabelBitrate  ());
@@ -466,10 +469,6 @@ public class VDWMainGui extends JFrame {
 			textVideoSize    .setText(this.selectedVideo.getLabelSize     ());
 			
 		}
-		
-		// Otherwise, the internal reference is cleared
-		else
-			this.selectedVideo = null;
 		
 		// Updating the media size info
 		utilCalculateMediaSize();
@@ -481,19 +480,17 @@ public class VDWMainGui extends JFrame {
 	 *  a proper panel. Also the internal references to audio video are updated. */
 	private void listenerComboAudio() {
 		
-		// Recovering the selected audio index
-		final int audioIndex = this.comboAudio.getSelectedIndex();
+		// Recovering the selected audio
+		this.selectedAudio = (Audio) this.comboAudio.getSelectedItem();
 		
 		// Setting panel's visibility depending on the selection (selected = show, otherwise, hide)
-		panelAudioInfo.setVisible(audioIndex > 0);
+		panelAudioInfo.setVisible(this.selectedAudio != null);
 		
 		progressAudio    .setVisible(false);
 		textProgressAudio.setVisible(false);
 		
 		// If an audio is selected, the internal reference and graphical labels are updated
-		if (audioIndex > 0) {
-			
-			this.selectedAudio = this.audioList.get(audioIndex - 1);
+		if (this.selectedAudio != null) {
 			
 			textAudioBitrate .setText(this.selectedAudio.getLabelBitrate   ());
 			textAudioSample  .setText(this.selectedAudio.getLabelSamplerate());
@@ -502,10 +499,6 @@ public class VDWMainGui extends JFrame {
 			textAudioSize    .setText(this.selectedAudio.getLabelSize      ());
 			
 		}
-		
-		// Otherwise, the internal reference is cleared
-		else
-			this.selectedAudio = null;
 		
 		// Updating the media size info
 		utilCalculateMediaSize();
@@ -602,8 +595,8 @@ public class VDWMainGui extends JFrame {
 		utilResetCombos();
 		utilLockMasterPanel(false);
 		
-		textJSONURL.setText(null);
-		textJSONURL.requestFocus();
+		textJSONURI.setText(null);
+		textJSONURI.requestFocus();
 		
 	}
 	
@@ -611,68 +604,72 @@ public class VDWMainGui extends JFrame {
 	private void actionJSONParse() {
 		
 		// Getting URL from text field
-		final String website = textJSONURL.getText().trim();
+		final String website = textJSONURI.getText().trim();
 		
-		// This job needs to be run inside a thread, since it connects to the Internet
-		Runnable job = () -> {
-		
-			try {
-				
-				// Updating UI
-				utilLockMasterPanel(true);
-				utilMessage("Downloading 'master.json'...", blue, true);
-				
-				// Trying to download and parse the JSON object
-				final URI jsonURI = new URI(website);
-				final JSONObject json = JSONParser.getJSON(jsonURI);
-				
-				// if I have a proper master.json...
-				if (json != null) {
+		if (!website.isEmpty()) {
+			
+			// This job needs to be run inside a thread, since it connects to the Internet
+			Runnable job = () -> {
+			
+				try {
 					
-					utilMessage("Parsing JSON...", blue, true);
+					// Updating UI
+					utilLockMasterPanel(true);
+					utilMessage("Downloading Vimeo JSON media info...", blue, true);
 					
-					// ...then I save it, ...
-					this.json = json;
+					// Trying to download and parse the JSON object
+					final URI jsonURI = new URI(website);
+					final JSONObject json = JSONParser.getJSON(jsonURI);
 					
-					// ...parse its embedded media, ...
-					this.videoList = JSONParser.getVideoList(json);
-					this.audioList = JSONParser.getAudioList(json);
-					
-					// ...and fill the combos.
-					utilFillCombo(this.videoList,this.comboVideo);
-					utilFillCombo(this.audioList,this.comboAudio);
-					
-					// When everything finishes, the label is hidden and the clear button shown. 
-					utilHideMessage();
-					SwingUtilities.invokeLater(() -> buttonJSONClear.setEnabled(true));
+					// if I have a proper master.json...
+					if (json != null) {
+						
+						utilMessage("Parsing JSON...", blue, true);
+						
+						// ...then I save it, ...
+						this.json = json;
+						
+						// ...parse its embedded media, ...
+						this.videoList = JSONParser.getVideoList(json);
+						this.audioList = JSONParser.getAudioList(json);
+						
+						// ...and fill the combos.
+						utilFillCombo(this.videoList,this.comboVideo);
+						utilFillCombo(this.audioList,this.comboAudio);
+						
+						// When everything finishes, the label is hidden and the clear button shown. 
+						utilHideMessage();
+						SwingUtilities.invokeLater(() -> buttonJSONClear.setEnabled(true));
+						
+					}
 					
 				}
-				
-			}
-			catch (MalformedURLException exception) {
-				utilLockMasterPanel(false);
-				utilMessage("Invalid JSON URL", rd_dk, false, 5);
-			}
-			catch (JSONException exception) {
-				utilLockMasterPanel(false);
-				utilMessage(exception.getMessage(), rd_dk, false, 5);
-			}
-			catch (ConnectException exception) {
-				utilLockMasterPanel(false);
-				utilMessage("The server is refusing connections", rd_dk, false, 5);
-			}
-			catch (Exception exception) {
-				exception.printStackTrace();
-				utilLockMasterPanel(false);
-				utilMessage("Unknown error occurred, please check the console", rd_dk, false, 10);
-			}
-		
-		};
-		
-		// Doing the hard work
-		Thread jsonParseThread = new Thread(job);
-		jsonParseThread.setName("JSON Parse Thread");
-		jsonParseThread.start();
+				catch (MalformedURLException exception) {
+					utilLockMasterPanel(false);
+					utilMessage("Invalid JSON URL", rd_dk, false, 5);
+				}
+				catch (JSONException exception) {
+					utilLockMasterPanel(false);
+					utilMessage(exception.getMessage(), rd_dk, false, 5);
+				}
+				catch (ConnectException exception) {
+					utilLockMasterPanel(false);
+					utilMessage("The server is refusing connections", rd_dk, false, 5);
+				}
+				catch (Exception exception) {
+					exception.printStackTrace();
+					utilLockMasterPanel(false);
+					utilMessage("Unknown error occurred, please check the console", rd_dk, false, 10);
+				}
+			
+			};
+			
+			// Doing the hard work
+			Thread jsonParseThread = new Thread(job);
+			jsonParseThread.setName("JSON Parse Thread");
+			jsonParseThread.start();
+			
+		}
 		
 	}
 	
@@ -682,14 +679,14 @@ public class VDWMainGui extends JFrame {
 		if ((audioList != null) && (audioList.size() > 0)) {
 			
 			Audio maxAudio = audioList.stream().max(Comparator.comparing(v -> v.getBitrate())).get();
-			comboAudio.setSelectedItem(maxAudio.getComboInfo());
+			comboAudio.setSelectedItem(maxAudio);
 			
 		}
 		
 		if ((videoList != null) && (videoList.size() > 0)) {
 			
 			Video maxVideo = videoList.stream().max(Comparator.comparing(v -> v.getWidth())).get();
-			comboVideo.setSelectedItem(maxVideo.getComboInfo());
+			comboVideo.setSelectedItem(maxVideo);
 			
 		}
 		
@@ -701,14 +698,14 @@ public class VDWMainGui extends JFrame {
 		if ((audioList != null) && (audioList.size() > 0)) {
 			
 			Audio minAudio = audioList.stream().min(Comparator.comparing(v -> v.getBitrate())).get();
-			comboAudio.setSelectedItem(minAudio.getComboInfo());
+			comboAudio.setSelectedItem(minAudio);
 			
 		}
 		
 		if ((videoList != null) && (videoList.size() > 0)) {
 			
 			Video minVideo = videoList.stream().min(Comparator.comparing(v -> v.getWidth())).get();
-			comboVideo.setSelectedItem(minVideo.getComboInfo());
+			comboVideo.setSelectedItem(minVideo);
 			
 		}
 		
@@ -812,15 +809,14 @@ public class VDWMainGui extends JFrame {
 	/** Fills the given 'comboBox' with information of each individual {@link Media} provided through 'mediaList'.
 	 *  @param mediaList - list of available {@link Media} extracted from the 'master.json' file
 	 *  @param comboBox - the desired combo to be filled */
-	private void utilFillCombo(ArrayList<? extends Media> mediaList, JComboBox<String> comboBox) {
+	private void utilFillCombo(ArrayList<? extends Media> mediaList, JComboBox<Media> comboBox) {
 		
 		SwingUtilities.invokeLater(() -> {
 		
 			comboBox.removeAllItems();
-			comboBox.addItem("<none>");
 			
 			for (Media media: mediaList)
-				comboBox.addItem(media.getComboInfo());
+				comboBox.addItem(media);
 		
 		});
 		
@@ -863,7 +859,7 @@ public class VDWMainGui extends JFrame {
 		
 		SwingUtilities.invokeLater(() -> {
 		
-			textJSONURL        .setEditable(visibility);
+			textJSONURI        .setEditable(visibility);
 			buttonJSONClipboard.setEnabled (visibility);
 			buttonJSONClear    .setEnabled (visibility);
 			buttonJSONParse    .setEnabled (visibility);
@@ -920,13 +916,13 @@ public class VDWMainGui extends JFrame {
 	/** Resets the comboboxes */
 	private void utilResetCombos() {
 		
-		final String none = "<none>";
+		//final String none = "<none>";
 		
 		comboVideo.removeAllItems();
 		comboAudio.removeAllItems();
 		
-		comboVideo.addItem(none);
-		comboAudio.addItem(none);
+		//comboVideo.addItem(none);
+		//comboAudio.addItem(none);
 		
 	}
 	
@@ -960,6 +956,7 @@ public class VDWMainGui extends JFrame {
 			
 			label.setText(labelText);
 			progress.setValue(intPercent);
+			progress.setString(labelText);
 			
 		});
 		

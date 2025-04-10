@@ -1,0 +1,15 @@
+########## Hints
+hint-text-json-uri     = Here goes the 'master.json' URI
+hint-button-json-cpb   = Get link from clipboard
+hint-button-json-clear = Clear the current link
+hint-button-json-parse = Start parsing the link
+
+hint-button-min-quality = Select minimum quality
+hint-button-max-quality = Select maximum quality
+
+hint-text-output-file     = Selected output file
+hint-button-output-select = Select an output file
+hint-button-output-clear  = Clear the selected output file
+
+hint-button-download = Start downloading media
+hint-button-cancel   = Cancel all running operations
