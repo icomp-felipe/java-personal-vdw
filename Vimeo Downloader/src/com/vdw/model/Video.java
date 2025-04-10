@@ -11,7 +11,7 @@ public class Video extends Media {
 	
 	/** Main constructor setting parameters and internally defining media type. */
 	public Video(final JSONObject videoJSON, final int index) {
-		super(videoJSON,index,"video");
+		super(videoJSON, index, "video");
 	}
 	
 	/************************* Custom Getters Section *************************************/
@@ -64,12 +64,12 @@ public class Video extends Media {
 
 	@Override
 	public String getDialogInfo() {
-		return String.format("stream %d [%dp @ %.2f fps]",super.index,getHeight(),getFramerate());
+		return String.format("stream %d [%dp @ %.2f fps]", super.index, getHeight(), getFramerate());
 	}
 	
 	@Override
 	public String getComboInfo() {
-		return String.format("%d: %dp @ %.2f fps [%d chunks]",super.index,getHeight(),getFramerate(),getChunkCount());
+		return String.format("%d: %dp @ %.2f fps [%d chunks]", super.index, getHeight(), getFramerate(), getChunkCount());
 	}
 
 }

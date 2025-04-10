@@ -27,6 +27,7 @@ import com.vdw.controller.*;
 import com.vdw.exception.*;
 
 import com.phill.libs.ui.AlertDialog;
+import com.phill.libs.ui.ESCDispose;
 import com.phill.libs.ui.GraphicsHelper;
 import com.phill.libs.ui.JPaintedPanel;
 import com.phill.libs.ui.KeyReleasedListener;
@@ -36,7 +37,7 @@ import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.5 - 30/05/2020 */
+ *  @version 1.6 - 10/APR/2025 */
 public class VDWMainGui extends JFrame {
 	
 	// Serial
@@ -89,13 +90,14 @@ public class VDWMainGui extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
-		super("VDW - build 20200819");
+		super("VDW - build 20250410");
 		
 		// Recovering graphical elements from 'res' directory
 		GraphicsHelper.setFrameIcon(this,"icon/icon.png");
 		GraphicsHelper helper = GraphicsHelper.getInstance();
 		Font   font = helper.getFont ();
 		Color color = helper.getColor();
+		ESCDispose.register(this);
 		
 		Icon pasteIcon = ResourceManager.getIcon("icon/clipboard_past.png",20,20);
 		Icon clearIcon = ResourceManager.getIcon("icon/clear.png",20,20);
@@ -1158,7 +1160,7 @@ public class VDWMainGui extends JFrame {
 			try {
 				
 				// Retrieving media URL
-				URL mediaURL = media.getBaseURL(json);
+				URL mediaURL = media.getBaseURI(json);
 				
 				// Creating temporary output file
 				File output = media.getTempFile(true);

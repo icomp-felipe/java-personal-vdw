@@ -1,13 +1,17 @@
 package com.vdw.model;
 
-import org.json.*;
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.phill.libs.files.PhillFileUtils;
-import com.phill.libs.time.PhillsDateUtils;
 import com.phill.libs.time.PhillsDateParser;
 
 /** Contains a reference to an media container in the JSON object.
@@ -15,7 +19,7 @@ import com.phill.libs.time.PhillsDateParser;
  *  Here, the JSON object is the data, all other things are getters
  *  retrieving and formatting information directly from the given {@link JSONObject}.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.5 - 29/05/2020 */
+ *  @version 1.6 - 10/APR/2025 */
 public abstract class Media {
 	
 	protected final int index;
@@ -32,22 +36,21 @@ public abstract class Media {
 
 	/************************* Custom Getters Section *************************************/
 	
-	/** Getter for the media base URL (RAW).
-	 *  @return A string containing the media base URL. */
-	public String getBaseURL() {
+	/** Getter for the media base URI (RAW).
+	 *  @return A string containing the media base URI. */
+	public String getBaseURI() {
 		return mediaJSON.getString("base_url");
 	}
 	
-	/** Getter for the media base URL.
-	 *  @return An {@link URL} containing the media base URL created using the given {@link JSONObject}.
-	 *  @throws MalformedURLException when the URL could not be properly created. 
-	 * @throws URISyntaxException 
-	 * @throws JSONException */
-	public URL getBaseURL(JSONObject json) throws MalformedURLException, JSONException, URISyntaxException {
+	/** Getter for the media base URI.
+	 *  @return An {@link URI} containing the media base URI created using the given {@link JSONObject}.
+	 *  @throws JSONException if there is no string value for the key. 
+	 *  @throws URISyntaxException when the given <code>json</code> object does not contain a valid URI. */
+	public URI getBaseURI(final JSONObject json) throws JSONException, URISyntaxException {
 		
-		URI baseURL = new URI(json.getString("media_base_url"));
+		URI baseURI = new URI(json.getString("media_base_url"));
 		
-		return baseURL.resolve(getBaseURL()).toURL();
+		return baseURI.resolve(this.getBaseURI());
 	}
 	
 	/** Getter for the number of containing chunks.
@@ -92,7 +95,7 @@ public abstract class Media {
 	/** Getter for media segments (chunks).
 	 *  @return A {@link JSONArray} containing the media chunks. */
 	public JSONArray getSegments() {
-		return mediaJSON.getJSONArray("segments");
+		return this.mediaJSON.getJSONArray("segments");
 	}
 	
 	/** If the given parameter is set to 'true', this method creates a temporary file
@@ -100,14 +103,14 @@ public abstract class Media {
 	 *  is returned. Note that if this method has never called with a 'true' parameter,
 	 *  a null file will be returned.
 	 *  @return A complete path to a temporary media file. */
-	public File getTempFile(boolean isNewFile) {
+	public File getTempFile(final boolean isNewFile) {
 
 		// If 'true', a new temporary file is created
 		if (isNewFile) {
 			
 			final String tempDir  = System.getProperty("java.io.tmpdir");
-			final String curdate  = PhillsDateUtils.now("YYMMdd_HHmmss");
-			final String filename = String.format("%s/%s_%s.tmp",tempDir,this.mediaType,curdate);
+			final String curdate  = LocalDateTime.now().format(DateTimeFormatter.ofPattern("YYMMdd_HHmmss"));
+			final String filename = String.format("%s/%s_%s.tmp", tempDir, this.mediaType, curdate);
 			
 			this.output = new File(filename);
 			

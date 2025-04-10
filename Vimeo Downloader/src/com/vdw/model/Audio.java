@@ -11,7 +11,7 @@ public class Audio extends Media {
 	
 	/** Main constructor setting parameters and internally defining media type. */
 	public Audio(final JSONObject audioJSON, final int index) {
-		super(audioJSON,index,"audio");
+		super(audioJSON, index, "audio");
 	}
 	
 	/************************* Custom Getters Section *************************************/
@@ -58,12 +58,12 @@ public class Audio extends Media {
 
 	@Override
 	public String getComboInfo() {
-		return String.format("%d: %d kb/s @ %.1fch [%d chunks]",super.index,getBitrate()/1000,getChannels(),getChunkCount());
+		return String.format("%d: %d kb/s @ %.1fch [%d chunks]", super.index, getBitrate()/1000, getChannels(), getChunkCount());
 	}
 	
 	@Override
 	public String getDialogInfo() {
-		return String.format("stream %d [%d kb/s @ %.1fch]",super.index,getBitrate()/1000,getChannels());
+		return String.format("stream %d [%d kb/s @ %.1fch]", super.index, getBitrate()/1000, getChannels());
 	}
 	
 }

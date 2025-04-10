@@ -2,33 +2,39 @@ package com.vdw.controller;
 
 import java.io.*;
 import java.net.*;
+import java.net.http.*;
+import java.nio.charset.*;
+import java.time.*;
 import java.util.*;
+
 import org.json.*;
-import org.apache.commons.io.*;
+
 import com.vdw.model.*;
 
 /** Provides useful methods to handle with 'master.json' file.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.0, 21/05/2020 */
+ *  @version 1.1, 10/APR/2025 */
 public class JSONParser {
 	
-	/** Retrieves a {@link JSONObject} from a given url.
-	 *  @param url - JSON URL
-	 *  @return The {@link JSONObject} downloaded from URL.
-	 *  @throws JSONException when, for some reason, the valid URL could not be reached or the given link doesn't provide a proper JSON.
-	 *  @throws IOException when the attempt to connect to the URL fails. 
-	 * @throws URISyntaxException */
-	public static JSONObject getJSON(final URL url) throws JSONException, IOException, URISyntaxException {
+	/** Retrieves a {@link JSONObject} from a given uri.
+	 *  @param uri - JSON URI
+	 *  @return The {@link JSONObject} downloaded from URI.
+	 *  @throws JSONException when, for some reason, the valid URI could not be reached or the given link doesn't provide a proper JSON.
+	 *  @throws IOException when the attempt to connect to the URI fails. 
+	 *  @throws InterruptedException if the connection operation is interrupted for some reason. */
+	public static JSONObject getJSON(final URI uri) throws JSONException, IOException, InterruptedException {
 		
-		// Connecting to the URL
 		JSONObject jso = null;
-		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		
-		connection.setConnectTimeout( 5000);	// Connection timeout set to 5s
-		connection.setReadTimeout   (10000);	// Download timeout set to 10s
+		// Setting connection parameters
+		HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();	// Connection timeout set to 5s
+		HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)).build();	// Download timeout set to 10s
+				
+		// Connecting...
+		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 		
 		// Getting the response
-		switch (connection.getResponseCode()) {
+		switch (response.statusCode()) {
 		
 			// Expired link
 			case 410:
@@ -41,20 +47,11 @@ public class JSONParser {
 			// Success
 			case 200:
 				
-				// Here I download the JSON string to a String and later to a proper JSONObject
-				InputStream stream = connection.getInputStream();
-				String json = IOUtils.toString(stream,"UTF-8");
-				
 				// Creating JSON
-				jso = new JSONObject(json);
+				jso = new JSONObject(response.body());
 				
-				// Closing web connection
-				stream.close();
-				
-				// Calculating the media base URL and...
-				String aux = jso.getString("base_url");
-				URI baseURI = new URI(url.toString()).resolve(aux);
-				//URL baseURL = new URL(url,aux);
+				// Calculating the media base URI and...
+				URI baseURI = uri.resolve(jso.getString("base_url"));
 				
 				// ...inserting into the newly created JSON
 				jso.put("media_base_url", baseURI.toString());
@@ -63,10 +60,9 @@ public class JSONParser {
 		
 		}
 		
-		connection.disconnect();
-		
 		return jso;
 	}
+	
 
 	/** Gets a list of available videos from the given {@link JSONObject}.
 	 *  @param json - proper 'master.json' object
