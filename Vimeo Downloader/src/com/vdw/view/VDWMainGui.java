@@ -41,7 +41,7 @@ import com.phill.libs.sys.ClipboardUtils;
 public class VDWMainGui extends JFrame {
 	
 	// Serial
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 9171869475092331567L;
 	
 	// Graphical attributes
 	private final JTextField textJSONURL;
@@ -63,7 +63,7 @@ public class VDWMainGui extends JFrame {
 	private final JLabel textLog;
 	
 	// MP4 file filter (to be used inside JFileChooser)
-	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)","mp4");
+	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)", "mp4");
 	
 	// Creating custom colors
 	private final Color gr_dk = new Color(0x0D6B12);
@@ -432,12 +432,6 @@ public class VDWMainGui extends JFrame {
 		buttonCancel.addActionListener((_) -> actionCancel());
 		mainFrame.add(buttonCancel);
 		
-		// Redirecting window closing event to a custom dispose() method, to prevent system instability
-		addWindowListener(new WindowAdapter() {
-	        public void windowClosing(WindowEvent event) {
-	            dispose();
-	    }});
-		
 		utilResetCombos();
 		
 		setVisible(true);
@@ -629,8 +623,8 @@ public class VDWMainGui extends JFrame {
 				utilMessage("Downloading 'master.json'...", blue, true);
 				
 				// Trying to download and parse the JSON object
-				final URL jsonURL = new URI(website).toURL();
-				final JSONObject json = JSONParser.getJSON(jsonURL);
+				final URI jsonURI = new URI(website);
+				final JSONObject json = JSONParser.getJSON(jsonURI);
 				
 				// if I have a proper master.json...
 				if (json != null) {
@@ -1159,8 +1153,8 @@ public class VDWMainGui extends JFrame {
 			
 			try {
 				
-				// Retrieving media URL
-				URL mediaURL = media.getBaseURI(json);
+				// Retrieving media URI
+				URI mediaURI = media.getBaseURI(json);
 				
 				// Creating temporary output file
 				File output = media.getTempFile(true);
@@ -1193,8 +1187,7 @@ public class VDWMainGui extends JFrame {
 					
 					// Retrieving the chunk URL 
 					JSONObject chunk = (JSONObject) segments.get(chunks);
-					URI chunkURI = new URI(mediaURL.toString()).resolve(chunk.getString("url"));
-					//URL chunkURL = new URL(mediaURL,chunk.getString("url"));
+					URI chunkURI = mediaURI.resolve(chunk.getString("url"));
 					
 					// Connecting to the URL
 					// Setting connection parameters
@@ -1303,4 +1296,5 @@ public class VDWMainGui extends JFrame {
 	public static void main(String[] args) {
 		new VDWMainGui();
 	}
+	
 }
