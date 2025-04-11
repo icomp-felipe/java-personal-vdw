@@ -59,6 +59,7 @@ public class VDWMainUI extends JFrame {
 	
 	// Graphical attributes
 	private final JTextField textJSONURI;
+	private final JButton buttonMinQuality, buttonMaxQuality;
 	private final JButton buttonJSONClipboard, buttonJSONClear, buttonJSONParse;
 	private final JButton buttonDownload, buttonCancel;
 	
@@ -183,13 +184,13 @@ public class VDWMainUI extends JFrame {
 		panelMedia.setLayout(null);
 		mainFrame.add(panelMedia);
 		
-		JButton buttonMinQuality = new JButton(minIcon);
+		buttonMinQuality = new JButton(minIcon);
 		buttonMinQuality.addActionListener((_) -> actionMinQuality());
 		buttonMinQuality.setToolTipText(bundle.getString("hint-button-min-quality"));
 		buttonMinQuality.setBounds(142, 92, 30, 25);
 		mainFrame.add(buttonMinQuality);
 		
-		JButton buttonMaxQuality = new JButton(maxIcon);
+		buttonMaxQuality = new JButton(maxIcon);
 		buttonMaxQuality.addActionListener((_) -> actionMaxQuality());
 		buttonMaxQuality.setToolTipText(bundle.getString("hint-button-max-quality"));
 		buttonMaxQuality.setBounds(182, 92, 30, 25);
@@ -834,6 +835,8 @@ public class VDWMainUI extends JFrame {
 		
 		SwingUtilities.invokeLater(() -> {
 		
+			buttonMinQuality  .setEnabled(enable);
+			buttonMaxQuality  .setEnabled(enable);
 			buttonJSONClear   .setEnabled(enable);
 			comboVideo        .setEnabled(enable);
 			comboAudio        .setEnabled(enable);
