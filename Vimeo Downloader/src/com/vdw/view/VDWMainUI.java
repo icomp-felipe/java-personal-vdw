@@ -52,7 +52,7 @@ import com.phill.libs.sys.ClipboardUtils;
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandre.eng@gmail.com
  *  @version 1.7 - 11/APR/2025 */
-public class VDWMainGui extends JFrame {
+public class VDWMainUI extends JFrame {
 	
 	// Serial
 	private static final long serialVersionUID = 9171869475092331567L;
@@ -107,7 +107,7 @@ public class VDWMainGui extends JFrame {
 	private Thread builderThread;
 	
 	/** Builds the graphical interface and its functionalities */
-	public VDWMainGui() {
+	public VDWMainUI() {
 		super("VDW - build 20250411");
 		
 		// Initializing graphical environment
@@ -1288,7 +1288,7 @@ public class VDWMainGui extends JFrame {
 	
 	/** Starts the graphical UI. */
 	public static void main(String[] args) {
-		new VDWMainGui();
+		new VDWMainUI();
 	}
 	
 }

@@ -2,6 +2,8 @@ package com.vdw.model;
 
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+/** @author Felipe André - felipeandre.eng@gmail.com
+  * @version 1.0 - 11/APR/2025 */
 public class Constants {
 	
 	/** Stores JFileChooser's file types.
