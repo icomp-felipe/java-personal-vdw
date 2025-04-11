@@ -14,7 +14,6 @@ import java.time.Duration;
 import java.util.*;
 
 import org.json.*;
-import org.apache.commons.io.*;
 
 import com.vdw.model.*;
 
@@ -40,7 +39,7 @@ import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.6 - 10/APR/2025 */
+ *  @version 1.7 - 11/APR/2025 */
 public class VDWMainGui extends JFrame {
 	
 	// Serial
@@ -609,34 +608,30 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	
-	
-	
-	/** Downloads the 'master.json' and parse its data. */
+	/** Downloads and parses the Vimeo Playlist. */
 	private void actionJSONParse() {
 		
 		// Getting URL from text field
-		final String website = textJSONURI.getText().trim();
+		final String uri = textJSONURI.getText().trim();
 		
-		if (!website.isEmpty()) {
+		if (!uri.isEmpty()) {
 			
-			// This job needs to be run inside a thread, since it connects to the Internet
 			Runnable job = () -> {
 			
 				try {
 					
 					// Updating UI
 					utilLockMasterPanel(true);
-					utilMessage("Downloading Vimeo JSON media info...", blue, true);
+					utilMessage(bundle.getString("vdw-action-json-parse-running"), blue, true);
 					
-					// Trying to download and parse the JSON object
-					final URI jsonURI = new URI(website);
+					// Downloading and parsing the playlist
+					final URI jsonURI = new URI(uri);
 					final JSONObject json = JSONParser.getJSON(jsonURI);
 					
-					// if I have a proper master.json...
+					// if I have a proper playlist...
 					if (json != null) {
 						
-						utilMessage("Parsing JSON...", blue, true);
+						utilMessage(bundle.getString("vdw-action-json-parse-parsing"), blue, true);
 						
 						// ...then I save it, ...
 						this.json = json;
@@ -658,7 +653,7 @@ public class VDWMainGui extends JFrame {
 				}
 				catch (MalformedURLException exception) {
 					utilLockMasterPanel(false);
-					utilMessage("Invalid JSON URL", rd_dk, false, 5);
+					utilMessage(bundle.getString("vdw-action-json-parse-excp01"), rd_dk, false, 5);
 				}
 				catch (JSONException exception) {
 					utilLockMasterPanel(false);
@@ -666,26 +661,26 @@ public class VDWMainGui extends JFrame {
 				}
 				catch (ConnectException exception) {
 					utilLockMasterPanel(false);
-					utilMessage("The server is refusing connections", rd_dk, false, 5);
+					utilMessage(bundle.getString("vdw-action-json-parse-excp02"), rd_dk, false, 5);
 				}
 				catch (Exception exception) {
 					exception.printStackTrace();
 					utilLockMasterPanel(false);
-					utilMessage("Unknown error occurred, please check the console", rd_dk, false, 10);
+					utilMessage(bundle.getString("vdw-action-json-parse-excp03"), rd_dk, false, 10);
 				}
 			
 			};
 			
 			// Doing the hard work
 			Thread jsonParseThread = new Thread(job);
-			jsonParseThread.setName("JSON Parse Thread");
+			jsonParseThread.setName("VDWMainUI::actionJSONParse thread");
 			jsonParseThread.start();
 			
 		}
 		
 	}
 	
-	/** Selects video and audio having the maximum quality */
+	/** Selects video and audio having the maximum quality. */
 	private void actionMaxQuality() {
 		
 		if ((audioList != null) && (audioList.size() > 0)) {
@@ -704,7 +699,7 @@ public class VDWMainGui extends JFrame {
 		
 	}
 	
-	/** Selects video and audio having the minimum quality */
+	/** Selects video and audio having the minimum quality. */
 	private void actionMinQuality() {
 		
 		if ((audioList != null) && (audioList.size() > 0)) {
@@ -727,38 +722,27 @@ public class VDWMainGui extends JFrame {
 	private void actionOutputSelect() {
 		
 		// Recovering the selected file
-		final File file = PhillFileUtils.loadFile(this, "Select an output file", MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
+		final String title = bundle.getString("vdw-action-output-select-title");
+		final File file = PhillFileUtils.loadFile(this, bundle.getString("vdw-action-output-select-dialog"), MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
 		
 		// If something was selected...
 		if (file != null) {
 			
-			// ((saving current directory info, to be used as suggestion by the JFileChooser later))
 			this.lastSelectedDir = file.getParentFile();
 			
 			// ... and the file cannot be written, the code ends here
-			if (!file.getParentFile().canWrite()) {
+			if (file.getParentFile().canWrite()) {
 				
-				String message = ResourceManager.getText(this,"output-select-read-only.msg",0);
-				AlertDialog.error(this, message);
-				return;
-				
-			}
-			
-			// ... and if the file already exists, an overwrite dialog is shown.
-			if (file.exists()) {
-				
-				String message = ResourceManager.getText(this,"output-select-override.msg",0);
-				int choice = JOptionPane.showConfirmDialog(this,message);
-				
-				// If the user doesn't want to overwrite the selected file, the code ends here
-				if (choice != JOptionPane.OK_OPTION)
+				// If the file already exists, an overwrite dialog is shown.
+				if (file.exists() && AlertDialog.dialog(this, title, bundle.getString("vdw-action-output-select-overwrite")) != AlertDialog.OK_OPTION)
 					return;
+					
+				this.outputFile = file;
+				textOutputFile.setText(file.getAbsolutePath());
 				
 			}
-			
-			// ... otherwise internal references and UI are updated
-			this.outputFile = file;
-			textOutputFile.setText(file.getAbsolutePath());
+			else
+				AlertDialog.error(this, title, bundle.getString("vdw-action-output-select-readonly"));
 			
 		}
 		
@@ -782,18 +766,11 @@ public class VDWMainGui extends JFrame {
 
 		// ffmpeg -i <audio.tmp> -i <video.tmp> -c:a copy -c:v copy <output.mp4> -y
 		
-		if (this.selectedAudio == null) {
+		if (this.selectedVideo != null)
 			builder.addInput(this.selectedVideo.getTempFile(false).getAbsolutePath());
-		}
 		
-		else if (this.selectedVideo == null) {
+		if (this.selectedAudio != null)
 			builder.addInput(this.selectedAudio.getTempFile(false).getAbsolutePath());
-		}
-		
-		else {
-			builder.addInput(this.selectedAudio.getTempFile(false).getAbsolutePath());
-			builder.addInput(this.selectedVideo.getTempFile(false).getAbsolutePath());
-		}
 		
 		builder = builder.addOutput(this.outputFile.getAbsolutePath()).setAudioCodec("copy").setVideoCodec("copy").done();
 		
@@ -801,12 +778,12 @@ public class VDWMainGui extends JFrame {
 		return builder;
 	}
 	
-	/** Calculates the aproximated media size (extracted from the 'master.json' file) and
+	/** Calculates the aproximated media size (extracted from the Vimeo Playlist) and
 	 *  shows it in a human readable format using the output size label (right down the file
 	 *  selection textfield). */
 	private synchronized void utilCalculateMediaSize() {
 		
-		long videoSize = 0, audioSize = 0;
+		long videoSize = 0L, audioSize = 0L;
 		
 		if (this.selectedVideo != null)
 			videoSize = this.selectedVideo.getMediaSize();
@@ -819,9 +796,9 @@ public class VDWMainGui extends JFrame {
 	}
 	
 	/** Fills the given 'comboBox' with information of each individual {@link Media} provided through 'mediaList'.
-	 *  @param mediaList - list of available {@link Media} extracted from the 'master.json' file
+	 *  @param mediaList - list of available {@link Media} extracted from the Vimeo Playlist
 	 *  @param comboBox - the desired combo to be filled */
-	private void utilFillCombo(ArrayList<? extends Media> mediaList, JComboBox<Media> comboBox) {
+	private void utilFillCombo(final ArrayList<? extends Media> mediaList, final JComboBox<Media> comboBox) {
 		
 		SwingUtilities.invokeLater(() -> {
 		
@@ -837,12 +814,8 @@ public class VDWMainGui extends JFrame {
 	/** Hides the label designed for logging. */
 	private void utilHideMessage() {
 		
-		Runnable job = () -> {
-			textLog.setText(null);
-			textLog.setIcon(null);
-		};
+		SwingUtilities.invokeLater(() -> textLog.setVisible(false));
 		
-		SwingUtilities.invokeLater(job);
 	}
 	
 	/** Blocks some fields when media download is in progress. 
@@ -885,15 +858,15 @@ public class VDWMainGui extends JFrame {
 	 *  @param color - the font color of the message
 	 *  @param loading - if 'true' a loading gif is added to the beginning of the label
 	 *  @param seconds - the amount of time to display the given message, before hiding it */
-	private void utilMessage(final String message, final Color color, final boolean loading, int seconds) {
+	private void utilMessage(final String message, final Color color, final boolean loading, final int seconds) {
 		
 		// Starts a new thread to prevent the caller to wait for this method to end
 		Runnable job = () -> {
 			
-			utilMessage(message,color,loading);
+			utilMessage(message, color, loading);
 			
 			try {
-				Thread.sleep(seconds * 1000);
+				Thread.sleep(seconds * 1000L);
 			}
 			catch (InterruptedException exception) {
 				
@@ -905,7 +878,7 @@ public class VDWMainGui extends JFrame {
 		};
 		
 		Thread messageThread = new Thread(job);
-		messageThread.setName("utilMessage() Thread");
+		messageThread.setName("VDWMainUI::utilMessage thread");
 		messageThread.start();
 		
 	}
@@ -917,34 +890,34 @@ public class VDWMainGui extends JFrame {
 	private void utilMessage(final String message, final Color color, final boolean loading) {
 		
 		Runnable job = () -> {
+			
+			textLog.setVisible(true);
 			textLog.setText(message);
 			textLog.setForeground(color);
 			textLog.setIcon(loading ? this.loading : null);
+			
 		};
 		
 		SwingUtilities.invokeLater(job);
 	}
 	
-	/** Resets the comboboxes */
+	/** Resets the comboboxes. */
 	private void utilResetCombos() {
-		
-		//final String none = "<none>";
 		
 		comboVideo.removeAllItems();
 		comboAudio.removeAllItems();
 		
-		//comboVideo.addItem(none);
-		//comboAudio.addItem(none);
-		
 	}
 	
 	/** Toggle visibility of cancel and download buttons (that exist in the same
-	 *   location) depending if a 'downloading' operation is being run. */
+	 *  location) depending if a 'downloading' operation is being run. */
 	private void utilToggleButtons(boolean downloading) {
 		
 		SwingUtilities.invokeLater(() -> {
+			
 			buttonDownload.setVisible(!downloading);
 			buttonCancel  .setVisible( downloading);
+			
 		});
 		
 	}
@@ -955,14 +928,17 @@ public class VDWMainGui extends JFrame {
 	 *  @param currentChunk - chunk that is being downloaded
 	 *  @param totalChunk - total amount of chunks to be downloaded
 	 *  @param bytesLoaded - amount of bytes downloaded until the calling of this method */
-	private synchronized void utilUpdateProgress(JProgressBar progress, JLabel label, int currentChunk, int totalChunk, long bytesLoaded) {
+	private synchronized void utilUpdateProgress(final JProgressBar progress, final JLabel label, final int currentChunk, final int totalChunk, final long bytesLoaded) {
 		
 		// Building the formatted string to be displayed in the JLabel
-		String labelText = String.format("Downloading chunk %d/%d [%s]",currentChunk,totalChunk,PhillFileUtils.humanReadableByteCount(bytesLoaded));
-		
+		String labelText = bundle.getFormattedString("vdw-util-update-progress",
+				                                      currentChunk,
+				                                      totalChunk,
+				                                      PhillFileUtils.humanReadableByteCount(bytesLoaded));
+				
 		// Building the value to be set in the JProgressBar
-		double percent = 100 * ((double) currentChunk / (double) totalChunk);
-	    int intPercent = (int) (percent + 0.5);
+		double percent = 100d * ((double) currentChunk / (double) totalChunk);
+	    int intPercent = (int) (percent + 0.5d);
 		
 		SwingUtilities.invokeLater(() -> {
 			
@@ -979,8 +955,10 @@ public class VDWMainGui extends JFrame {
 	 *  output media and delete temp files when everything finishes. */
 	private void functionBuildMedia() {
 		
+		final String title = bundle.getString("vdw-build-media-title");
+		
 		// Updating UI
-		utilMessage("Downloading media", blue, true);
+		utilMessage(bundle.getString("vdw-build-media-downloading"), blue, true);
 		
 		// Preparing and executing the threads for each individual media
 		MediaDownloader audio = new MediaDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
@@ -1001,13 +979,14 @@ public class VDWMainGui extends JFrame {
 			audio.hasException();
 			
 			// After downloading all selected media, it's merging time!
+			utilMessage(bundle.getString("vdw-build-media-merging"), blue, true);
 			functionMerger();
 			
 			// If everything worked as expected, the fields are unlocked and the downloaded media, deleted
 			functionCleanFiles();
 			
-			utilMessage("Everything complete", gr_dk, false, 5);
-			JOptionPane.showMessageDialog(this,"Everything's complete");
+			utilMessage(bundle.getString("vdw-build-media-success"), gr_dk, false, 5);
+			AlertDialog.info(this, title, bundle.getString("vdw-build-media-success"));
 			
 		}
 		
@@ -1019,7 +998,7 @@ public class VDWMainGui extends JFrame {
 			
 			functionCleanFiles();
 			
-			utilMessage("Media download cancelled", Color.BLACK, false, 10);
+			utilMessage(bundle.getString("vdw-build-media-aborted"), Color.BLACK, false, 10);
 		}
 		catch (VDWDownloaderException exception) {
 			setDownloadErrorState();
@@ -1031,7 +1010,7 @@ public class VDWMainGui extends JFrame {
 			exception.printStackTrace();
 		}
 		catch (Exception exception) {
-			utilMessage("An unknown error occurred, please check the console", rd_dk, false, 10);
+			utilMessage(bundle.getString("vdw-build-media-unk-exception"), rd_dk, false, 10);
 			exception.printStackTrace();
 		}
 		
@@ -1058,12 +1037,12 @@ public class VDWMainGui extends JFrame {
 	private void functionMerger() throws VDWMergerException {
 		
 		// Updating UI
-		utilMessage("Merging files with ffmpeg", blue, true);
+		utilMessage(bundle.getString("vdw-merger-running"), blue, true);
 		
 		try {
 			
 			// Locating ffmpeg files
-			FFmpeg ffmpeg = new FFmpeg ();
+			FFmpeg ffmpeg = new FFmpeg();
 			
 			// Creating executor
 	        FFmpegExecutor executor = new FFmpegExecutor(ffmpeg);
@@ -1075,12 +1054,12 @@ public class VDWMainGui extends JFrame {
 	        // Creating ffmpeg progress monitor
 	        FFmpegJob job = executor.createJob(builder);
 	        
-	        // Doing the actual hard work - this thread will be locked here until the ffmpeg jog finishes
+	        // Doing the actual hard work - this thread will be locked here until the ffmpeg job finishes
 	        job.run();
 			
 		}
 		catch (Exception exception) {
-			throw new VDWMergerException("Something went wrong merging files. Please, check the console",exception);
+			throw new VDWMergerException(bundle.getString("vdw-merger-exception"), exception);
 		}
 		
 	}
@@ -1129,7 +1108,7 @@ public class VDWMainGui extends JFrame {
 		private VDWDownloaderException exception;
 		
 		// Setting everything, including a custom name for this thread
-		public MediaDownloader(Media media, JProgressBar progress, JLabel label) {
+		public MediaDownloader(final Media media, final JProgressBar progress, final JLabel label) {
 			
 			this.media = media;
 			this.progress = progress;
@@ -1165,39 +1144,38 @@ public class VDWMainGui extends JFrame {
 				URI mediaURI = media.getBaseURI(json);
 				
 				// Creating temporary output file
-				File output = media.getTempFile(true);
-				BufferedOutputStream stream = new BufferedOutputStream(new FileOutputStream(output));
+				File outputFile = media.getTempFile(true);
+				BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
 				
 				// Initiating downloaded byte counter 
-				long bytesDownloaded = 0L;
+				long bytesLoaded = 0L;
 				
 				// Writing first binary data to output file, coming from a base64 string inside JSON
-				byte[] init_segment = media.getInitSegment();
+				final byte[] firstBytes = media.getInitSegment();
 				
-				stream.write(init_segment);
-				bytesDownloaded += init_segment.length;
+				outputStream.write(firstBytes);
+				bytesLoaded += firstBytes.length;
 				
 				// Retrieving chunk array from JSON
-				JSONArray segments = media.getSegments();
-				
-				// Updating UI
-				utilUpdateProgress(progress, label, 0, segments.length(), bytesDownloaded);
+				JSONArray chunks = media.getSegments();
 				
 				// Chunk downloaded counter
-				int chunks = 0;
+				int downloadedChunks = 0;
+				
+				// Updating UI
+				utilUpdateProgress(progress, label, downloadedChunks, chunks.length(), bytesLoaded);
 				
 				// Downloading chunks
-				for (; chunks<segments.length(); chunks++) {
+				for (; downloadedChunks<chunks.length(); downloadedChunks++) {
 					
 					// If the current thread is interrupted, the 'for' is exited
 					if (isInterrupted())
 						break;
 					
 					// Retrieving the chunk URL 
-					JSONObject chunk = (JSONObject) segments.get(chunks);
+					JSONObject chunk = (JSONObject) chunks.get(downloadedChunks);
 					URI chunkURI = mediaURI.resolve(chunk.getString("url"));
 					
-					// Connecting to the URL
 					// Setting connection parameters
 					HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();	// Connection timeout set to 10s
 					HttpRequest request = HttpRequest.newBuilder(chunkURI).timeout(Duration.ofSeconds(30)).build();	// Download timeout set to 30s
@@ -1205,43 +1183,41 @@ public class VDWMainGui extends JFrame {
 					// Connecting...
 					HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
 					
-			        int responseCode = response.statusCode();
-			        
-			        // If succeeded...
-			        if (responseCode == 200) {
+			        if (response.statusCode() == 200) {
 			        	
-			        	// then a download task is created...
 				        InputStream inputStream = response.body();
 				        
-				        // ...and the downloaded bytes, incremented
-				        bytesDownloaded += IOUtils.copy(inputStream, stream);
+				        bytesLoaded += inputStream.transferTo(outputStream);
 				        
-				        // Updating UI
-				        utilUpdateProgress(progress, label, (chunks+1), segments.length(), bytesDownloaded);
+				        utilUpdateProgress(progress, label, (downloadedChunks+1), chunks.length(), bytesLoaded);
 				        
 				        // Cleaning resources
 			            inputStream.close();
 			            
 			        }
 			        else {
-			        	stream.close();
-			        	this.exception = new VDWDownloaderException("The selected media is not available anymore");
+			        	
+			        	outputStream.close();
+			        	this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-uri-closed"));
+			        	
 			        }
 			        
 				}
 				
 				// Closing output
-				stream.close();
+				outputStream.close();
 				
 				// Updating UI
-				final String finish = String.format("Downloaded %d chunk%s [%s]",chunks,(chunks > 1) ? "s" : "",PhillFileUtils.humanReadableByteCount(bytesDownloaded));
-				final boolean interrupted = isInterrupted();
+				final String message = bundle.getFormattedString("vdw-mediadw-run-success",
+																downloadedChunks,
+																(downloadedChunks > 1) ? "s" : "",
+																PhillFileUtils.humanReadableByteCount(bytesLoaded));
 				
 				SwingUtilities.invokeLater(() -> {
 					
-					label.setText(finish);
+					label.setText(message);
 					
-					if (!interrupted) {
+					if (!isInterrupted()) {
 						label   .setForeground(gr_dk);
 						progress.setForeground(gr_lt);
 					}
@@ -1252,19 +1228,19 @@ public class VDWMainGui extends JFrame {
 			
 			// Exception handling section
 			catch (ConnectException exception) {
-				this.exception = new VDWDownloaderException("The server is refusing connections");
+				this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-excp01"));
 			}
 			catch (FileNotFoundException exception) {
-				this.exception = new VDWDownloaderException("Fail to create temporary file");
+				this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-excp02"));
 			}
-			catch (MalformedURLException exception) {
-				this.exception = new VDWDownloaderException("Invalid media chunk detected! Please contact the developer");
+			catch (URISyntaxException exception) {
+				this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-excp03"));
 			}
 			catch (IOException exception) {
-				this.exception = new VDWDownloaderException("Fail to write to temporary file");
+				this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-excp04"));
 			}
 			catch (Exception exception) {
-				this.exception = new VDWDownloaderException("Unknown error occurred during media download, please check the console",exception);
+				this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-excp05"), exception);
 			}
 			
 		}
@@ -1287,20 +1263,20 @@ public class VDWMainGui extends JFrame {
 		// If the downloading media thread is being executed...
 		if ((this.builderThread != null) && (this.builderThread.isAlive())) {
 			
-			String message = ResourceManager.getText(this,"exit-confirm.msg",0);
-			int choice = JOptionPane.showConfirmDialog(this,message);
-			
-			// and the user really wants to exit, we cancel the current running thread before
-			if (choice == JOptionPane.OK_OPTION)
+			if (AlertDialog.dialog(this, bundle.getString("vdw-dispose-title"), bundle.getString("vdw-dispose-dialog")) == AlertDialog.OK_OPTION) {
+				
 				this.builderThread.interrupt();
+				super.dispose();
+				
+			}
 			
 		}
-		
-		super.dispose();
+		else
+			super.dispose();
 		
 	}
 	
-	/** Starts the graphical UI */
+	/** Starts the graphical UI. */
 	public static void main(String[] args) {
 		new VDWMainGui();
 	}

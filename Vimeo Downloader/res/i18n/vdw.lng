@@ -46,3 +46,50 @@ vdw-action-download-confirm = Please, check if everything is fine with your sele
 vdw-action-json-clear-title  = VDW [Reset Screen]
 vdw-action-json-clear-dialog = When clearing, the entire screen is reset.\n\
                                Do you still want to continue?
+
+! VDWMainUI::actionJSONParse
+vdw-action-json-parse-running = Downloading Vimeo Playlist...
+vdw-action-json-parse-parsing = Parsing playlist...
+vdw-action-json-parse-excp01  = Invalid Vimeo URL
+vdw-action-json-parse-excp02  = The server is refusing connections
+vdw-action-json-parse-excp03  = An unknown error occurred, please check the console
+
+! VDWMainUI::actionOutputSelect
+vdw-action-output-select-title     = VDW [Output File Select]
+vdw-action-output-select-dialog    = Select an output file
+vdw-action-output-select-readonly  = The selected file is in a read-only directory.\n\
+                                     Please, select a destination with writing permitions.
+vdw-action-output-select-overwrite = The selected media already exists.\n\
+                                     Do you want to overwrite it?
+
+! VDWMainUI::utilUpdateProgress
+vdw-util-update-progress = Downloading chunk %d/%d [%s]
+
+! VDWMainUI::functionBuildMedia
+vdw-build-media-title         = VDW [Downloading Media]
+vdw-build-media-downloading   = Downloading media...
+vdw-build-media-merging       = Building output file...
+vdw-build-media-success       = Everything's complete
+vdw-build-media-aborted       = Media download cancelled
+vdw-build-media-unk-exception = An unknown error occurred, please check the console
+
+! VDWMainUI::functionMerger
+vdw-merger-running   = Merging files with ffmpeg...
+vdw-merger-exception = Something went wrong while merging files!\n\
+                       Please, check the console for more info.
+
+! VDWMainUI::dispose
+vdw-dispose-title  = VDW [Exiting]
+vdw-dispose-dialog = When exiting, all the current operations are cancelled\n\
+                     and the temporary downloaded media, deleted.\n\
+                     Do you still want to continue?
+
+! VDWMainUI.MediaDownloader::run
+vdw-mediadw-run-uri-closed = The selected media is not online anymore.
+vdw-mediadw-run-success    = Downloaded %d chunk%s [%s]
+vdw-mediadw-run-excp01     = The server is refusing connections
+vdw-mediadw-run-excp02     = Fail to create temporary file
+vdw-mediadw-run-excp03     = Invalid media chunk URI detected! Please contact the developer.
+vdw-mediadw-run-excp04     = Fail to write to temporary file
+vdw-mediadw-run-excp05     = An unknown error occurred while downloading media!\n\
+                             Please check the console for more info.
