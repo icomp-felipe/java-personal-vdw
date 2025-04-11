@@ -34,6 +34,8 @@ import com.phill.libs.ui.KeyReleasedListener;
 import com.phill.libs.ResourceManager;
 import com.phill.libs.files.PhillFileUtils;
 import com.phill.libs.i18n.PropertyBundle;
+import com.phill.libs.mfvapi.MandatoryFieldsLogger;
+import com.phill.libs.mfvapi.MandatoryFieldsManager;
 import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
@@ -65,6 +67,10 @@ public class VDWMainGui extends JFrame {
 	
 	// MP4 file filter (to be used inside JFileChooser)
 	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)", "mp4");
+	
+	// MFV API
+	private final MandatoryFieldsManager fieldValidator;
+	private final MandatoryFieldsLogger  fieldLogger;
 	
 	// Language bundle
 	private final static PropertyBundle bundle = new PropertyBundle("i18n/vdw", null);
@@ -126,7 +132,7 @@ public class VDWMainGui extends JFrame {
 		// Panel 'Master.JSON URL'
 		JPanel panelJSON = new JPanel();
 		panelJSON.setOpaque(false);
-		panelJSON.setBorder(helper.getTitledBorder("Master.JSON URI"));
+		panelJSON.setBorder(helper.getTitledBorder("Vimeo Playlist URI"));
 		panelJSON.setBounds(12, 12, 1000, 75);
 		panelJSON.setLayout(null);
 		mainFrame.add(panelJSON);
@@ -434,6 +440,14 @@ public class VDWMainGui extends JFrame {
 		
 		utilResetCombos();
 		
+		// Initiating field validation
+		this.fieldValidator = new MandatoryFieldsManager();
+		this.fieldLogger    = new MandatoryFieldsLogger ();
+		
+		fieldValidator.addPermanent(new JLabel(), () -> this.json != null, bundle.getString("vdw-mfv-json"), false);
+		fieldValidator.addPermanent(new JLabel(), () -> (this.selectedVideo != null || this.selectedAudio != null), bundle.getString("vdw-mfv-media"), false);
+		fieldValidator.addPermanent(new JLabel(), () -> this.outputFile != null, bundle.getString("vdw-mfv-output"), false);
+		
 		setSize(dimension);
 		setResizable(false);
 		setLocationRelativeTo(null);
@@ -507,57 +521,54 @@ public class VDWMainGui extends JFrame {
 	
 	/************************ Button Event Methods Section ********************************/
 	
-	/** Cancels the download operation if the user wants. */
+	/** Cancel the current running thread. */
 	private void actionCancel() {
 		
-		String message = ResourceManager.getText(this,"cancel-confirm.msg",0);
-		int choice = AlertDialog.dialog(this, message);
-		
-		if (choice == AlertDialog.OK_OPTION) {
+		if (AlertDialog.dialog(this, bundle.getString("vdw-action-cancel-title"), bundle.getString("vdw-action-cancel-dialog")) == AlertDialog.OK_OPTION) {
 			this.builderThread.interrupt();
 			setDownloadCancelState();
 		}
 		
 	}
 	
-	/** Checks pre-requisites and, if everything's fine, procceed with the download of selected media. */
+	/** Implements the media download functionality. */
 	private void actionDownload() {
 		
+		final String title = bundle.getString("vdw-action-download-title");
+		
 		/*********** Checking pre-requisites ************/
-		if (this.json == null) {
-			AlertDialog.error(this, "You first need to parse a valid 'master.json' file");
-			return;
+		fieldValidator.validate(fieldLogger);
+		
+		if (fieldLogger.hasErrors()) {
+			
+			AlertDialog.error(this, title, bundle.getFormattedString("vdw-action-download-mfv", fieldLogger.getErrorString()));
+			fieldLogger.clear();
+			
 		}
 		
-		if ((this.selectedVideo == null) && (this.selectedAudio == null)) {
-			AlertDialog.error(this, "Please, select at least one media stream");
-			return;
-		}
-		
-		if (this.outputFile == null) {
-			AlertDialog.error(this, "Please, select an output file");
-			return;
-		}
-		
-		/********* Showing a confirm dialog *************/
-		String videoInfo = (this.selectedVideo != null) ? this.selectedVideo.getDialogInfo() : "none";
-		String audioInfo = (this.selectedAudio != null) ? this.selectedAudio.getDialogInfo() : "none";
-		String overwrite = (this.outputFile.exists()) ? "(overwrite)" : "";
-		
-		String message = ResourceManager.getText(this,"download-confirm.msg",videoInfo,audioInfo,this.outputFile.getAbsolutePath(),overwrite);
-		int choice = AlertDialog.dialog(this, message);
-		
-		if (choice != AlertDialog.OK_OPTION)
-			return;
+		else {
+			
+			String videoInfo = (this.selectedVideo != null) ? this.selectedVideo.getDialogInfo() : "none";
+			String audioInfo = (this.selectedAudio != null) ? this.selectedAudio.getDialogInfo() : "none";
+			String overwrite = (this.outputFile.exists()) ? "(overwrite)" : "";
+			
+			String message = bundle.getFormattedString("vdw-action-download-confirm", videoInfo, audioInfo, this.outputFile.getAbsolutePath(), overwrite); 
 
-		// Locking some fields to prevent the user to change values while downloading
-		utilLockDownloading(true);
-		utilToggleButtons(true);
-		
-		// Doing the hard work...
-		this.builderThread = new Thread(() -> functionBuildMedia());
-		this.builderThread.setName("Builder thread");
-		this.builderThread.start();
+			// Showing a confirm dialog
+			if (AlertDialog.dialog(this, title, message) == AlertDialog.OK_OPTION) {
+				
+				// Locking some fields to prevent the user to change values while downloading
+				utilLockDownloading(true);
+				utilToggleButtons(true);
+				
+				// Doing the hard work...
+				this.builderThread = new Thread(() -> functionBuildMedia());
+				this.builderThread.setName("VDMMainUI::actionDownload thread");
+				this.builderThread.start();
+				
+			}
+			
+		}
 		
 	}
 	
@@ -567,38 +578,39 @@ public class VDWMainGui extends JFrame {
 		// If a JSON was previously downloaded, a clear dialog is shown
 		if (this.json != null) {
 			
-			String message = ResourceManager.getText(this,"json-clear-confirm.msg",0);
-			int choice     = AlertDialog.dialog(this, message);
-			
-			// Breaks here when EXIT or CANCEL is selected
-			if (choice != AlertDialog.OK_OPTION)
-				return;
+			if (AlertDialog.dialog(this, bundle.getString("vdw-action-json-clear-title"),
+										 bundle.getString("vdw-action-json-clear-dialog")) == AlertDialog.OK_OPTION) {
+				
+				// Resetting parameters and unlocking panels, buttons, etc... 
+				this.json = null;
+				this.videoList = null;
+				this.audioList = null;
+				this.outputFile = null;
+				
+				this.progressVideo.setVisible(false);
+				this.progressAudio.setVisible(false);
+				
+				this.textProgressVideo.setVisible(false);
+				this.textProgressAudio.setVisible(false);
+				
+				this.textLog.setVisible(false);
+				
+				textOutputFile.setText(null);
+				
+				utilResetCombos();
+				utilLockMasterPanel(false);
+				
+				textJSONURI.setText(null);
+				textJSONURI.requestFocus();
+				
+			}
 			
 		}
 		
-		// Resetting parameters and unlocking panels, buttons, etc... 
-		this.json = null;
-		this.videoList = null;
-		this.audioList = null;
-		this.outputFile = null;
-		
-		this.progressVideo.setVisible(false);
-		this.progressAudio.setVisible(false);
-		
-		this.textProgressVideo.setVisible(false);
-		this.textProgressAudio.setVisible(false);
-		
-		this.textLog.setVisible(false);
-		
-		textOutputFile.setText(null);
-		
-		utilResetCombos();
-		utilLockMasterPanel(false);
-		
-		textJSONURI.setText(null);
-		textJSONURI.requestFocus();
-		
 	}
+	
+	
+	
 	
 	/** Downloads the 'master.json' and parse its data. */
 	private void actionJSONParse() {
@@ -956,7 +968,6 @@ public class VDWMainGui extends JFrame {
 			
 			label.setText(labelText);
 			progress.setValue(intPercent);
-			progress.setString(labelText);
 			
 		});
 		

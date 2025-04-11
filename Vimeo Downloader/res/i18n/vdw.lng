@@ -1,5 +1,5 @@
 ########## Hints
-hint-text-json-uri     = Here goes the 'master.json' URI
+hint-text-json-uri     = Here goes Vimeo's Playlist URI, usually named 'playlist.json' or 'master.json'
 hint-button-json-cpb   = Get link from clipboard
 hint-button-json-clear = Clear the current link
 hint-button-json-parse = Start parsing the link
@@ -13,3 +13,36 @@ hint-button-output-clear  = Clear the selected output file
 
 hint-button-download = Start downloading media
 hint-button-cancel   = Cancel all running operations
+
+########## MFV API Field Validation Strings
+vdw-mfv-json   = A valid Vimeo Playlist needs to be parsed
+vdw-mfv-media  = At least one media stream needs to be selected
+vdw-mfv-output = Please, select an output file
+
+########## Methods
+! VDWMainUI::actionCancel
+vdw-action-cancel-title  = VDW [Cancel Running Operations]
+vdw-action-cancel-dialog = Are you sure you want to cancel the current operation?\n\
+                           The temporary media downloaded will be deleted.
+
+! VDWMainUI::actionDownload
+vdw-action-download-title   = VDW [Download Media]
+vdw-action-download-mfv     = One or more prerequisites could not be satisfied:\n\
+                              \n\
+                              %s
+vdw-action-download-confirm = Please, check if everything is fine with your selection:\n\
+                              \n\
+                              Selected video: %s\n\
+                              Selected audio: %s\n\
+                              Output media: %s %s\n\
+                              \n\
+                              After confirming, the selected media will be downloaded\n\
+                              to your system's temporary directory and then merged in\n\
+                              the output selected. During the process, all fields are\n\
+                              blocked due to stability reasons, but don't worry, when\n\
+                              everything ends, the program will be fully unlocked.
+
+! VDWMainUI::actionJSONClear
+vdw-action-json-clear-title  = VDW [Reset Screen]
+vdw-action-json-clear-dialog = When clearing, the entire screen is reset.\n\
+                               Do you still want to continue?
