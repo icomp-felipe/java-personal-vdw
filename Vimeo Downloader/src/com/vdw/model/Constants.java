@@ -1,0 +1,16 @@
+package com.vdw.model;
+
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+public class Constants {
+	
+	/** Stores JFileChooser's file types.
+	 *  @see FileNameExtensionFilter */
+	public static class FileFormat {
+		
+		public static final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MPEG-4 File (.mp4)", "mp4");
+		public static final FileNameExtensionFilter MKV = new FileNameExtensionFilter("Matroska File (.mkv)", "mkv");
+		
+	}
+
+}

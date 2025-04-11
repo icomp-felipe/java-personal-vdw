@@ -1,21 +1,32 @@
 package com.vdw.view;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import java.io.*;
-import java.net.*;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.*;
-
-import org.json.*;
-
-import com.vdw.model.*;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import net.bramp.ffmpeg.FFmpeg;
 import net.bramp.ffmpeg.FFmpegExecutor;
@@ -24,6 +35,7 @@ import net.bramp.ffmpeg.job.FFmpegJob;
 
 import com.vdw.controller.*;
 import com.vdw.exception.*;
+import com.vdw.model.*;
 
 import com.phill.libs.ui.AlertDialog;
 import com.phill.libs.ui.ESCDispose;
@@ -64,9 +76,6 @@ public class VDWMainGui extends JFrame {
 	private final ImageIcon loading = new ImageIcon(ResourceManager.getResource("icon/loading.gif"));
 	private final JLabel textLog;
 	
-	// MP4 file filter (to be used inside JFileChooser)
-	private final FileNameExtensionFilter MP4 = new FileNameExtensionFilter("MP4 Video File (.mp4)", "mp4");
-	
 	// MFV API
 	private final MandatoryFieldsManager fieldValidator;
 	private final MandatoryFieldsLogger  fieldLogger;
@@ -99,7 +108,7 @@ public class VDWMainGui extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainGui() {
-		super("VDW - build 20250410");
+		super("VDW - build 20250411");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
@@ -128,7 +137,7 @@ public class VDWMainGui extends JFrame {
 		JPanel mainFrame = new JPaintedPanel("img/background.png", dimension);
 		setContentPane(mainFrame);
 		
-		// Panel 'Master.JSON URL'
+		// Panel 'Vimeo Playlist URI'
 		JPanel panelJSON = new JPanel();
 		panelJSON.setOpaque(false);
 		panelJSON.setBorder(helper.getTitledBorder("Vimeo Playlist URI"));
@@ -162,7 +171,7 @@ public class VDWMainGui extends JFrame {
 		buttonJSONParse.setBounds(955, 30, 30, 25);
 		panelJSON.add(buttonJSONParse);
 		
-		// Adds 'Enter' event to the input URL textfield
+		// Adds 'Enter' event to the input URI textfield
 		KeyListener listener = (KeyReleasedListener) (event) -> { if (event.getKeyCode() == KeyEvent.VK_ENTER) buttonJSONParse.doClick(); };
 		textJSONURI.addKeyListener(listener);
 		
@@ -611,7 +620,7 @@ public class VDWMainGui extends JFrame {
 	/** Downloads and parses the Vimeo Playlist. */
 	private void actionJSONParse() {
 		
-		// Getting URL from text field
+		// Getting URI from text field
 		final String uri = textJSONURI.getText().trim();
 		
 		if (!uri.isEmpty()) {
@@ -651,7 +660,7 @@ public class VDWMainGui extends JFrame {
 					}
 					
 				}
-				catch (MalformedURLException exception) {
+				catch (URISyntaxException exception) {
 					utilLockMasterPanel(false);
 					utilMessage(bundle.getString("vdw-action-json-parse-excp01"), rd_dk, false, 5);
 				}
@@ -723,7 +732,8 @@ public class VDWMainGui extends JFrame {
 		
 		// Recovering the selected file
 		final String title = bundle.getString("vdw-action-output-select-title");
-		final File file = PhillFileUtils.loadFile(this, bundle.getString("vdw-action-output-select-dialog"), MP4, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
+		final FileNameExtensionFilter[] fileTypes = { Constants.FileFormat.MP4, Constants.FileFormat.MKV };
+		final File file = PhillFileUtils.loadFile(this, bundle.getString("vdw-action-output-select-dialog"), fileTypes, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
 		
 		// If something was selected...
 		if (file != null) {
@@ -1172,7 +1182,7 @@ public class VDWMainGui extends JFrame {
 					if (isInterrupted())
 						break;
 					
-					// Retrieving the chunk URL 
+					// Retrieving chunk URI
 					JSONObject chunk = (JSONObject) chunks.get(downloadedChunks);
 					URI chunkURI = mediaURI.resolve(chunk.getString("url"));
 					
