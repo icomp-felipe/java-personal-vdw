@@ -287,7 +287,6 @@ public class VDWMainUI extends JFrame {
 		panelVideo.add(textProgressVideo);
 		
 		progressVideo = new JProgressBar();
-		progressVideo.setStringPainted(true);
 		progressVideo.setVisible(false);
 		progressVideo.setBounds(12, 283, 456, 20);
 		panelVideo.add(progressVideo);
@@ -384,7 +383,6 @@ public class VDWMainUI extends JFrame {
 		panelAudio.add(textProgressAudio);
 		
 		progressAudio = new JProgressBar();
-		progressAudio.setStringPainted(true);
 		progressAudio.setVisible(false);
 		progressAudio.setBounds(10, 283, 456, 20);
 		panelAudio.add(progressAudio);
