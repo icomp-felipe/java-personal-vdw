@@ -109,7 +109,7 @@ public class VDWMainUI extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainUI() {
-		super("VDW - build 20250411");
+		super("VDW - build 20250415");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
@@ -630,7 +630,7 @@ public class VDWMainUI extends JFrame {
 					
 					// Updating UI
 					utilLockMasterPanel(true);
-					utilMessage(bundle.getString("vdw-action-json-parse-running"), blue, true);
+					utilMessage(bundle.getString("vdw-action-json-parse-running"), Color.BLACK, true);
 					
 					// Downloading and parsing the playlist
 					final URI jsonURI = new URI(uri);
@@ -639,7 +639,7 @@ public class VDWMainUI extends JFrame {
 					// if I have a proper playlist...
 					if (json != null) {
 						
-						utilMessage(bundle.getString("vdw-action-json-parse-parsing"), blue, true);
+						utilMessage(bundle.getString("vdw-action-json-parse-parsing"), Color.BLACK, true);
 						
 						// ...then I save it, ...
 						this.json = json;
@@ -969,7 +969,7 @@ public class VDWMainUI extends JFrame {
 		final String title = bundle.getString("vdw-build-media-title");
 		
 		// Updating UI
-		utilMessage(bundle.getString("vdw-build-media-downloading"), blue, true);
+		utilMessage(bundle.getString("vdw-build-media-downloading"), Color.BLACK, true);
 		
 		// Preparing and executing the threads for each individual media
 		MediaDownloader audio = new MediaDownloader(this.selectedAudio, this.progressAudio, this.textProgressAudio);
@@ -990,7 +990,7 @@ public class VDWMainUI extends JFrame {
 			audio.hasException();
 			
 			// After downloading all selected media, it's merging time!
-			utilMessage(bundle.getString("vdw-build-media-merging"), blue, true);
+			utilMessage(bundle.getString("vdw-build-media-merging"), Color.BLACK, true);
 			functionMerger();
 			
 			// If everything worked as expected, the fields are unlocked and the downloaded media, deleted
@@ -1048,7 +1048,7 @@ public class VDWMainUI extends JFrame {
 	private void functionMerger() throws VDWMergerException {
 		
 		// Updating UI
-		utilMessage(bundle.getString("vdw-merger-running"), blue, true);
+		utilMessage(bundle.getString("vdw-merger-running"), Color.BLACK, true);
 		
 		try {
 			
