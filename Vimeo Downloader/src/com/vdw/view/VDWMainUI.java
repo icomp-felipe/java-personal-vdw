@@ -109,7 +109,7 @@ public class VDWMainUI extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainUI() {
-		super("VDW - build 20250415");
+		super("VDW - build 20260329");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
