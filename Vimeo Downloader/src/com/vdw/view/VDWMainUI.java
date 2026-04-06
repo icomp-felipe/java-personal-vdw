@@ -51,7 +51,7 @@ import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.7 - 11/APR/2025 */
+ *  @version 1.8 - 06/APR/2026 */
 public class VDWMainUI extends JFrame {
 	
 	// Serial
@@ -109,7 +109,7 @@ public class VDWMainUI extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainUI() {
-		super("VDW - build 20260329");
+		super("VDW - build 20260406");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
@@ -613,6 +613,13 @@ public class VDWMainUI extends JFrame {
 			}
 			
 		}
+		else {
+			
+			textJSONURI.setText(null);
+			textJSONURI.requestFocus();
+			
+		}
+			
 		
 	}
 	
