@@ -51,7 +51,7 @@ import com.phill.libs.sys.ClipboardUtils;
 
 /** Implements the main User Interface and all its functionalities.
  *  @author Felipe André - felipeandre.eng@gmail.com
- *  @version 1.8 - 06/APR/2026 */
+ *  @version 1.9 - 25/MAY/2026 */
 public class VDWMainUI extends JFrame {
 	
 	// Serial
@@ -109,7 +109,7 @@ public class VDWMainUI extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainUI() {
-		super("VDW - build 20260406");
+		super("VDW - build 20260525");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
@@ -1156,14 +1156,10 @@ public class VDWMainUI extends JFrame {
 				
 			});
 			
-			try {
+			try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(media.getTempFile(true)))) {
 				
 				// Retrieving media URI
 				URI mediaURI = media.getBaseURI(json);
-				
-				// Creating temporary output file
-				File outputFile = media.getTempFile(true);
-				BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
 				
 				// Initiating downloaded byte counter 
 				long bytesLoaded = 0L;
@@ -1203,27 +1199,22 @@ public class VDWMainUI extends JFrame {
 					
 			        if (response.statusCode() == 200) {
 			        	
-				        InputStream inputStream = response.body();
+				        try (InputStream inputStream = response.body()) {
 				        
-				        bytesLoaded += inputStream.transferTo(outputStream);
+				        	bytesLoaded += inputStream.transferTo(outputStream);
+					        
+					        utilUpdateProgress(progress, label, (downloadedChunks+1), chunks.length(), bytesLoaded);
+					        
+				        }
 				        
-				        utilUpdateProgress(progress, label, (downloadedChunks+1), chunks.length(), bytesLoaded);
-				        
-				        // Cleaning resources
-			            inputStream.close();
-			            
 			        }
 			        else {
 			        	
-			        	outputStream.close();
 			        	this.exception = new VDWDownloaderException(bundle.getString("vdw-mediadw-run-uri-closed"));
 			        	
 			        }
 			        
 				}
-				
-				// Closing output
-				outputStream.close();
 				
 				// Updating UI
 				final String message = bundle.getFormattedString("vdw-mediadw-run-success",
