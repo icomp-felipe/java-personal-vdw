@@ -109,7 +109,7 @@ public class VDWMainUI extends JFrame {
 	
 	/** Builds the graphical interface and its functionalities */
 	public VDWMainUI() {
-		super("VDW - build 20260525");
+		super("VDW - build 20260627");
 		
 		// Initializing graphical environment
 		GraphicsHelper helper = GraphicsHelper.getInstance();
@@ -738,7 +738,7 @@ public class VDWMainUI extends JFrame {
 		
 		// Recovering the selected file
 		final String title = bundle.getString("vdw-action-output-select-title");
-		final FileNameExtensionFilter[] fileTypes = { Constants.FileFormat.MP4, Constants.FileFormat.MKV };
+		final FileNameExtensionFilter[] fileTypes = { Constants.FileFormat.MKV, Constants.FileFormat.MP4 };
 		final File file = PhillFileUtils.loadFile(this, bundle.getString("vdw-action-output-select-dialog"), fileTypes, PhillFileUtils.SAVE_DIALOG, lastSelectedDir, null);
 		
 		// If something was selected...
